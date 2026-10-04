@@ -14,8 +14,10 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-import msgpack
 import pytest
+
+pytest.importorskip("msgpack", reason="engine tests exercise the msgpack-rpc client")
+import msgpack
 
 REPO = Path(__file__).resolve().parent.parent
 import sys
