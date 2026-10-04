@@ -1,5 +1,7 @@
 # muse-familiar
 
+**Landing page with a live in-browser Familiar: <https://nitishagar.github.io/muse-familiar/>**
+
 **A pixel creature that lives on your Arduino UNO Q's LED matrix — fed by
 your webhooks, seen and heard by [Muse](https://gadgets.muse.ai/).**
 

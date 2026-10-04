@@ -26,7 +26,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 
 CODE_EXTS = {".py", ".json", ".yaml", ".yml", ".toml", ".sh", ".cfg", ".ini",
-              ".md", ".ino", ".service", ".txt"}
+              ".md", ".ino", ".service", ".txt", ".html"}
 CODE_NAMES = lambda p: p.suffix.lower() in CODE_EXTS or p.name.startswith(".env")
 
 ASSIGN_RE = re.compile(
