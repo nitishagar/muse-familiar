@@ -31,6 +31,8 @@ def test_familiar_specs_match_upstream_contract():
                 assert set(meta) == {"type", "description"}
                 assert meta["type"] in ("string", "integer", "boolean")
 
+    checked = 0
     for spec in executor.COMMAND_SPECS.values():
         assert "description" in spec and "required" in spec
-        break
+        checked += 1
+    assert checked == len(executor.COMMAND_SPECS)  # guard scans the WHOLE contract

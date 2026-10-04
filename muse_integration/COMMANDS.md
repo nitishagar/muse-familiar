@@ -26,6 +26,8 @@ Edit `/opt/musegadget/venv/lib/python3.*/site-packages/musegadget/executor.py`
   `system_run` goes through `/bin/bash -c`, so allowlist before building:
 
 ```python
+from musegadget.executor import error  # module-level helper in executor.py
+
 FAMILIAR_MOODS = ("happy", "sad", "alert", "sleepy", "curious", "idle", "off")
 
 if command == "familiar.status":

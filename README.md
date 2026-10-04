@@ -31,10 +31,12 @@ this is a first, on a board built for exactly this kind of mischief.
 
 ```sh
 # 1. flash the frame player (needs the board's own arduino-cli + password)
+read -rs UNOQ_UPLOAD_PASSWORD && export UNOQ_UPLOAD_PASSWORD   # typed, never in shell history
 cd firmware && ./upload.sh
 
-# 2. run the creature (webhook on loopback; FAMILIAR_LAN=1 ./serve for LAN)
+# 2. run the creature (webhook on loopback; use `--lan` with the engine for LAN)
 mkdir -p ~/.config/familiar && head -c24 /dev/urandom | base64 > ~/.config/familiar/key
+chmod 600 ~/.config/familiar/key
 systemctl --user enable --now familiar-engine   # after installing the unit
 
 # 3. make it happy

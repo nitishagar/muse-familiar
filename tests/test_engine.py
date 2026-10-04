@@ -26,6 +26,7 @@ from familiar import frames as F  # noqa: E402
 from familiar import webhook  # noqa: E402
 from familiar.bridge_client import RouterClient  # noqa: E402
 from familiar.moods import MoodMachine  # noqa: E402
+from familiar import engine as engine_mod  # noqa: E402
 from familiar.engine import Engine  # noqa: E402
 
 # --- frames -------------------------------------------------------------------
@@ -170,8 +171,7 @@ def test_client_ping_and_chunked_show(fake_router):
                        "familiar.show.begin", "familiar.show.chunk",
                        "familiar.show.play"]
     # period clamp mirrored host-side
-    args = dict(fake_router.calls[1])[1] if False else fake_router.calls[1][1]
-    assert args == [2, 300]
+    assert fake_router.calls[1][1] == [2, 300]
     c.show(F.mood_frames("curious")[1], period_ms=100)  # 4 frames, clamped
     begin = [call for call in fake_router.calls if call[0] == "familiar.show.begin"]
     assert begin[-1][1] == [4, 250]
@@ -181,7 +181,6 @@ def test_client_reconnects_after_socket_death(fake_router):
     c = RouterClient(socket_path=fake_router.path, timeout=2)
     c.ping()
     c._sock.close()                                # simulate router restart
-    c._sock = c._sock                              # keep stale ref
     assert "pong" in c.ping()                      # reconnect path works
 
 
@@ -189,7 +188,8 @@ def test_client_error_and_timeout(tmp_path):
     slow = FakeRouter(str(tmp_path / "slow.sock"), delay=1.5)
     try:
         c = RouterClient(socket_path=slow.path, timeout=0.3)
-        with pytest.raises(Exception):
+        from familiar.bridge_client import BridgeTimeout
+        with pytest.raises(BridgeTimeout):
             c.ping()
     finally:
         slow.close()
@@ -197,7 +197,7 @@ def test_client_error_and_timeout(tmp_path):
     try:
         c = RouterClient(socket_path=missing.path, timeout=2)
         from familiar.bridge_client import BridgeError
-        with pytest.raises(BridgeError):
+        with pytest.raises(BridgeError, match="not available"):
             c.call("familiar.nothing")
     finally:
         missing.close()
@@ -224,7 +224,7 @@ def post(port, body, key="right-key", path="/poke"):
 def hook(tmp_path):
     webhook._STATE["key"] = "right-key"
     webhook._STATE["hits"] = {}
-    events: "queue.Queue[tuple[str, float]]" = queue.Queue(maxsize=8)
+    events: "queue.Queue[tuple[str, float]]" = queue.Queue(maxsize=webhook.QUEUE_MAX)
     server = webhook.serve(events, key="right-key", port=0)
     port = server.server_address[1]
     yield events, port
@@ -265,10 +265,80 @@ def test_webhook_queue_drops_oldest(hook):
     assert kinds[0] == "poke2" and kinds[-1] == "poke9"
 
 
+# --- pinned bounds (mutation guards) -------------------------------------------------
+
+
+def test_heartbeat_fits_inside_sketch_idle_timeout():
+    """The engine heartbeat MUST be shorter than the sketch's idle timeout,
+    else a 'serving' engine orphans the matrix to the dim glyph."""
+    from familiar import engine
+    assert engine.HEARTBEAT_S < engine.SKETCH_IDLE_TIMEOUT_S
+    assert engine.SKETCH_IDLE_TIMEOUT_S == 30.0  # FramePlayer IDLE_TIMEOUT_MS
+
+
+def test_client_chunk_bound_matches_router_cap():
+    """Router caps messages ~256 B (measured; 3 frames FAIL) — the chunk
+    size must stay <= 2 frames."""
+    assert RouterClient.CHUNK_FRAMES <= 2
+
+
+def test_no_raw_router_passthrough_outside_the_client():
+    """IMPLICIT_SPEC inv.4: only familiar/bridge_client.py may name the
+    router socket; nothing else (engine, webhook, specs) touches it."""
+    import subprocess
+    out = subprocess.run(
+        ["grep", "-rln", "--include=*.py", "--include=*.md", "--include=*.service",
+         "--include=*.sh", "arduino-router.sock",
+         "familiar/", "muse_integration/", "units/", "firmware/upload.sh"],
+        capture_output=True, text=True, cwd=REPO)
+    hits = out.stdout.strip().splitlines()
+    # the one sanctioned client + kill_test's READ-ONLY `ls -l` observation
+    # (the plan's own snapshot-diff check) — anything else is a passthrough.
+    assert hits == ["familiar/bridge_client.py", "units/kill_test.sh"], out.stdout
+    kt = (REPO / "units" / "kill_test.sh").read_text()
+    line = [l for l in kt.splitlines() if "arduino-router.sock" in l][0]
+    assert "ls -l" in line and not ("connect" in line or "chmod" in line)
+
+
+def test_webhook_bind_modes():
+    """loopback by default; --lan/lan=True binds all interfaces (invariant 6)."""
+    webhook._STATE["key"] = "k"
+    webhook._STATE["hits"] = {}
+    lo = webhook.serve(queue.Queue(maxsize=1), key="k", port=0, lan=False)
+    try:
+        assert lo.server_address[0] == "127.0.0.1"
+    finally:
+        lo.shutdown()
+    lan = webhook.serve(queue.Queue(maxsize=1), key="k", port=0, lan=True)
+    try:
+        assert lan.server_address[0] == "0.0.0.0"
+    finally:
+        lan.shutdown()
+
+
+def test_webhook_bad_length_header_and_garbage_key(hook):
+    """Pre-auth hardening: negative/oversized/garbage Content-Length and
+    non-ASCII keys get clean 4xx/5xx JSON, never a traceback."""
+    events, port = hook
+    import http.client
+    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+    conn.putrequest("POST", "/poke")
+    conn.putheader("Content-Length", "-5")
+    conn.putheader("X-Familiar-Key", "right-key")
+    conn.endheaders()
+    r = conn.getresponse()
+    assert r.status in (400, 413, 500)
+    conn.close()
+    status, _ = post(port, {"kind": "x"}, key="\u00e9\u00e9")
+    assert status in (401, 200)  # compared as bytes: no TypeError, clean 401
+    assert events.empty()
+
+
 # --- engine -------------------------------------------------------------------------
 
 
-def test_engine_events_heartbeat_and_hot():
+def test_engine_events_heartbeat_and_hot(tmp_path, monkeypatch):
+    monkeypatch.setattr(engine_mod, "EVENTS_FILE", str(tmp_path / "e.jsonl"))
     class FakeClient:
         def __init__(self):
             self.shows = []

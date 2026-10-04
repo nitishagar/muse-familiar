@@ -71,10 +71,11 @@ String familiar_ping() {
 
 int familiar_show_begin(int total_frames, int period_ms) {
     if (total_frames < 1 || (size_t)total_frames > MAX_FRAMES) return -1;
-    uint32_t period = (uint32_t)period_ms;
-    if (period < MIN_PERIOD_MS) period = MIN_PERIOD_MS;     // <= 4 fps
+    int32_t period = (int32_t)period_ms;                    // negative guard
+    uint32_t period_u = (period > (int32_t)MIN_PERIOD_MS)
+                        ? (uint32_t)period : MIN_PERIOD_MS; // <= 4 fps
     loadFrames = 0;
-    loadPeriod = period;
+    loadPeriod = period_u;
     lastHeartbeatMs = millis();
     return 0;
 }

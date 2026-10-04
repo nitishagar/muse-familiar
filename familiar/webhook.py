@@ -39,21 +39,36 @@ def make_handler(queue_: "queue.Queue[tuple[str, float]]",
                  now=time.time) -> type:
     class Handler(BaseHTTPRequestHandler):
         def do_POST(self):
+            try:
+                self._do_post(now)
+            except Exception:            # never leak a traceback to peers
+                try:
+                    self._reply(500, {"ok": False, "error": "internal"})
+                except Exception:
+                    pass
+                _STATE["rejected"] += 1
+
+        def _do_post(self, now):
             if self.path.split("?", 1)[0] != "/poke":
                 self._reply(404, {"ok": False, "error": "not found"})
                 return
-            length = int(self.headers.get("Content-Length", 0))
-            if length > MAX_BODY:
+            # rate-limit FIRST: failures must not be a free channel
+            if not _rate_ok(self.client_address[0], now()):
+                self._reply(429, {"ok": False, "error": "rate limited"})
+                _STATE["rejected"] += 1
+                return
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+            except ValueError:
+                length = MAX_BODY + 1
+            if length < 0 or length > MAX_BODY:
                 self._reply(413, {"ok": False, "error": "too large"})
                 _STATE["rejected"] += 1
                 return
-            presented = self.headers.get("X-Familiar-Key", "")
-            if not hmac.compare_digest(presented, _STATE["key"]):
+            presented = self.headers.get("X-Familiar-Key", "") or ""
+            if not hmac.compare_digest(presented.encode("utf-8", "ignore"),
+                                       _STATE["key"].encode("utf-8", "ignore")):
                 self._reply(401, {"ok": False, "error": "bad key"})
-                _STATE["rejected"] += 1
-                return
-            if not _rate_ok(self.client_address[0], now()):
-                self._reply(429, {"ok": False, "error": "rate limited"})
                 _STATE["rejected"] += 1
                 return
             try:

@@ -27,7 +27,10 @@ else:
     from .bridge_client import RouterClient
     from .moods import MoodMachine
 
-HEARTBEAT_S = 20.0
+HEARTBEAT_S = 20.0            # must stay < the sketch's 30 s idle timeout
+SKETCH_IDLE_TIMEOUT_S = 30.0   # pinned by tests/test_engine.py
+LOCK_PATH = os.environ.get(
+    "FAMILIAR_LOCK", os.path.expanduser("~/.local/state/familiar.lock"))
 HEALTH_POLL_S = 60.0
 SLEEPY_TEMP_C = 78.0
 EVENTS_FILE = os.environ.get(
@@ -82,7 +85,7 @@ class Narrator:
             import subprocess
             proc = subprocess.run(
                 [self.MUSEGADGET, "send-user-msg", text],
-                capture_output=True, text=True, timeout=100)
+                capture_output=True, text=True, timeout=10)  # short: must never stall the heartbeat
             if proc.returncode == 0:
                 return
         with open(self.path, "a") as f:
@@ -139,6 +142,13 @@ class Engine:
         return changed or self.machine.mood
 
     def run(self) -> int:
+        # Single-writer discipline: hold a SHARED lock for our lifetime so
+        # firmware/upload.sh (exclusive) cannot flash under a live engine.
+        import fcntl
+        os.makedirs(os.path.dirname(LOCK_PATH), exist_ok=True)
+        lock_fd = open(LOCK_PATH, "a+")
+        fcntl.flock(lock_fd, fcntl.LOCK_SH)
+
         def _stop(*_a):
             self.stop = True
 
@@ -152,6 +162,9 @@ class Engine:
             self.client.clear()   # graceful: dark matrix on exit
         except Exception:
             pass                  # sketch idle timeout is the backstop
+        finally:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            lock_fd.close()
         return 0
 
 
