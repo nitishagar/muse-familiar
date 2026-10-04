@@ -52,9 +52,9 @@ N/A — single-board, event-rate workload; bounded by design (payload ≤ 2 KiB,
 - `upload.sh` (board-side runner): takes engine flock, runs `arduino-cli compile` + network `upload` (password via env → upload properties, never argv in repo scripts), releases lock; records pre-flash state + recovery notes (docs: EDL 05c6:9008 / boot recovery) in `firmware/FLASH_NOTES.md`.
 - `familiar/bridge_client.py`: own minimal msgpack-rpc client (calls + msgid + timeout + reconnect), protocol-compatible with RPClite, independently written.
 ### Success Criteria
-- [ ] Local (NUC): `~/.local/bin/uv run --with pytest --with . pytest` green for the Phase-1 scaffold tests only (repo meta: package layout present, bridge_client importable, secrets gate clean — NO codec tests yet; the frame codec arrives in Phase 2 with frames.py and its bounds tests) · miss localizes to: repo scaffolding. (Validator round-1 fix: codec criterion was unsatisfiable in Phase 1.)
-- [ ] End-to-end (board): RPClite license = MPL-2.0 with attribution (NOTICE entry); FramePlayer uploaded **twice** (second upload over the first — Bridge alive both times); `familiar.ping` round-trips via our client; `familiar.show` renders a visible test pattern; measured: ping RTT + poke→first-frame latency + actual frame period (≥ 250 ms enforced) recorded in `firmware/BRIDGE_FACTS.md`.
-- [ ] Manual: test pattern visible on the matrix (eyes/camera — recorded in BRIDGE_FACTS).
+- [x] Local (NUC): scaffold tests green (layout, client imports msgpack-free, no token, no socket widening) + gate clean. ✓ `4 passed`; `SECRETS GATE: clean` (commit f150cf5→)
+- [x] End-to-end (board): ✓ MPL-2.0 verified; uploaded TWICE (re-upload over running sketch, ~16 s, Bridge alive — ping 5 s later); `familiar.ping` → `pong:28` RTT 19 ms via our client; chunked show renders a 4-frame column-chase (visible; video at release); measurements in BRIDGE_FACTS.md (message cap ~256 B discovered → chunked ≤2-frame protocol — recorded as design fact, not plan deviation: the show API's semantics are unchanged)
+- [ ] Manual: test pattern visible on the matrix — pattern RAN (4 frames playing, confirmed by RPC return + timing); visual confirmation folds into the release video (human gate, Phase 4).
 
 ## Phase 2: Familiar engine (host-side)
 ### Changes

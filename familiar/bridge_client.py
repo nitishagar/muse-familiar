@@ -109,13 +109,25 @@ class RouterClient:
     def ping(self) -> str:
         return self.call("familiar.ping")
 
+    CHUNK_FRAMES = 2  # router caps messages ~256 B (measured; 2 frames OK)
+
     def show(self, frames: list[bytes] | list[str], period_ms: int,
              count: int = 0) -> int:
-        """Push an animation. Frames are 104-char strings of '0'..'7'."""
+        """Push an animation in <=2-frame chunks (router message cap), then
+        play. Frames are 104-char strings of '0'..'7'. Returns frames playing."""
         if period_ms < 250:
             period_ms = 250  # host-side mirror of the MCU clamp
-        encoded = "".join(f.decode() if isinstance(f, bytes) else f for f in frames)
-        return self.call("familiar.show", encoded, int(period_ms), int(count))
+        texts = [f.decode() if isinstance(f, bytes) else f for f in frames]
+        for t in texts:
+            if len(t) != 104:
+                raise ValueError("each frame must be exactly 104 chars")
+        total = len(texts)
+        self.call("familiar.show.begin", total, int(period_ms))
+        staged = 0
+        for i in range(0, total, self.CHUNK_FRAMES):
+            staged = self.call("familiar.show.chunk",
+                               "".join(texts[i:i + self.CHUNK_FRAMES]))
+        return self.call("familiar.show.play", int(count))
 
     def clear(self) -> int:
         return self.call("familiar.clear")

@@ -5,7 +5,7 @@
     sketch only renders what it is told, with safety enforced on the MCU:
 
       familiar.ping()                      -> "pong:<uptime_s>"
-      familiar.show(String frames, int period_ms, int count)
+      familiar.show.begin(total, period) -> show.chunk(str<=2 frames)* -> show.play(count)
             frames = N * 104 ASCII chars, each '0'..'7' (grayscale level);
             clamps: period_ms >= 250 (<= 4 fps), N <= 64 frames; extra bits
             masked. Each show() doubles as the heartbeat.
@@ -58,30 +58,50 @@ static void renderCurrent() {
 }
 
 // --- RPC methods -----------------------------------------------------------
+// The router caps messages at ~256 bytes (measured: 2 x 104-char frames OK,
+// 3 fail), so animations upload in chunks: show_begin -> show_chunk* ->
+// show_play. Every call refreshes the heartbeat.
+
+static size_t  loadFrames = 0;      // frames staged by show_chunk
+static uint32_t loadPeriod = MIN_PERIOD_MS;
 
 String familiar_ping() {
     return String("pong:") + String(millis() / 1000);
 }
 
-int familiar_show(String frames, int period_ms, int count) {
+int familiar_show_begin(int total_frames, int period_ms) {
+    if (total_frames < 1 || (size_t)total_frames > MAX_FRAMES) return -1;
+    uint32_t period = (uint32_t)period_ms;
+    if (period < MIN_PERIOD_MS) period = MIN_PERIOD_MS;     // <= 4 fps
+    loadFrames = 0;
+    loadPeriod = period;
+    lastHeartbeatMs = millis();
+    return 0;
+}
+
+int familiar_show_chunk(String frames) {
     size_t len = frames.length();
     if (len == 0 || len % FRAME_BYTES != 0) return -1;      // bad payload
     size_t n = len / FRAME_BYTES;
-    if (n > MAX_FRAMES) n = MAX_FRAMES;                     // clamp count
-
-    uint32_t period = (uint32_t)period_ms;
-    if (period < MIN_PERIOD_MS) period = MIN_PERIOD_MS;     // <= 4 fps
-    if (count > 0 && (size_t)count < n) n = (size_t)count;
-
+    if (loadFrames + n > MAX_FRAMES) return -1;
     for (size_t f = 0; f < n; f++) {
         for (size_t i = 0; i < FRAME_BYTES; i++) {
             uint8_t v = (uint8_t)(frames.charAt(f * FRAME_BYTES + i) - '0');
             if (v > 7) v = 7;                               // 3-bit mask
-            playBuffer[f][i] = v;
+            playBuffer[loadFrames + f][i] = v;
         }
     }
+    loadFrames += n;
+    lastHeartbeatMs = millis();
+    return (int)loadFrames;
+}
+
+int familiar_show_play(int count) {
+    if (loadFrames == 0) return -1;
+    size_t n = loadFrames;
+    if (count > 0 && (size_t)count < n) n = (size_t)count;
     playFrames = n;
-    playPeriod = period;
+    playPeriod = loadPeriod;
     playIndex = 0;
     playing = true;
     lastFrameMs = millis();
@@ -107,7 +127,9 @@ void setup() {
 
     Bridge.begin();
     Bridge.provide("familiar.ping", familiar_ping);
-    Bridge.provide_safe("familiar.show", familiar_show);
+    Bridge.provide_safe("familiar.show.begin", familiar_show_begin);
+    Bridge.provide_safe("familiar.show.chunk", familiar_show_chunk);
+    Bridge.provide_safe("familiar.show.play", familiar_show_play);
     Bridge.provide_safe("familiar.clear", familiar_clear);
 }
 
@@ -129,5 +151,6 @@ void loop() {
         lastHeartbeatMs = now;  // re-arm so we don't redraw every loop pass
     }
 
-    Bridge.update_safe();       // serves provide_safe methods in this thread
+    // NOTE: provide_safe methods are dispatched by the framework's own loop
+    // hook — Bridge.update_safe() is private by design (RouterBridge README).
 }
