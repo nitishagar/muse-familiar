@@ -61,13 +61,43 @@ def _log_event(kind: str, mood: str) -> None:
         pass
 
 
+class Narrator:
+    """Sends mood transitions to a Muse side chat when the paired gadget
+    CLI is usable; falls back to a JSONL file (the no-token demo mode)."""
+
+    MUSEGADGET = "/opt/musegadget/venv/bin/musegadget"
+
+    def __init__(self, path=None):
+        self.path = path or EVENTS_FILE.replace("events", "narration")
+        self._mode = "file"
+
+    def _muse_ready(self) -> bool:
+        import os
+        import shutil
+        sock = "/run/musegadget/musegadget.sock"
+        return (shutil.which("musegadget") or os.path.exists(self.MUSEGADGET))             and os.path.exists(sock) and os.access(sock, os.W_OK)
+
+    def send(self, text: str) -> None:
+        if self._muse_ready():
+            import subprocess
+            proc = subprocess.run(
+                [self.MUSEGADGET, "send-user-msg", text],
+                capture_output=True, text=True, timeout=100)
+            if proc.returncode == 0:
+                return
+        with open(self.path, "a") as f:
+            f.write(json.dumps({"text": text, "ts": time.time()}) + "\n")
+
+
 class Engine:
     def __init__(self, client: RouterClient, machine: MoodMachine,
                  events: "queue.Queue[tuple[str, float]]",
-                 now=time.monotonic, temp_fn=_health_temp_c):
+                 now=time.monotonic, temp_fn=_health_temp_c,
+                 narrator=None):
         self.client = client
         self.machine = machine
         self.events = events
+        self.narrator = narrator or Narrator()
         self._now = now
         self._temp_fn = temp_fn
         self._last_show = 0.0
@@ -86,6 +116,12 @@ class Engine:
             kind, _ts = self.events.get_nowait()
             changed = self.machine.event(kind)
             _log_event(kind, self.machine.mood)
+            if changed:
+                try:
+                    self.narrator.send(f"The Familiar is now {changed} "
+                                       f"(event: {kind}).")
+                except Exception:
+                    pass  # narration must never kill the creature
         except queue.Empty:
             pass
         expired = self.machine.tick()
@@ -126,10 +162,18 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--port", type=int, default=webhook.DEFAULT_PORT)
     ap.add_argument("--lan", action="store_true",
                     help="bind the webhook on 0.0.0.0 (default loopback)")
+    ap.add_argument("--key-file", default=os.path.expanduser(
+        "~/.config/familiar/key"), help="file holding the webhook shared key")
     ns = ap.parse_args(argv)
 
+    key = ""
+    try:
+        with open(ns.key_file) as f:
+            key = f.read().strip()
+    except OSError:
+        pass
     events: "queue.Queue[tuple[str, float]]" = queue.Queue(maxsize=webhook.QUEUE_MAX)
-    webhook.serve(events, key="", port=ns.port, lan=ns.lan)
+    webhook.serve(events, key=key, port=ns.port, lan=ns.lan)
     client = RouterClient()
     engine = Engine(client, MoodMachine(), events)
     return engine.run()

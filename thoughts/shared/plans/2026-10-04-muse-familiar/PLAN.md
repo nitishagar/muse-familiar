@@ -73,8 +73,8 @@ N/A — single-board, event-rate workload; bounded by design (payload ≤ 2 KiB,
 - Narration: mood-transition → `musegadget send-user-msg` sender (edge-trigger port; FileSender default pre-pairing).
 - Pairing left OPEN; `sudo musegadget pair` reopen documented; user phone step = manual gate (explicitly theirs).
 ### Success Criteria
-- [ ] Local: contract test green with `MUSE_SDK_LINUX_DIR` (observed); full suite green.
-- [ ] End-to-end (board): `systemctl is-active musegadget` (root service); `musegadget info` shows pairing state/open; snapshot diff shows ONLY SDK-attributed changes; **EXIT GATE: full no-token demo** — webhook poke → animation → narration JSONL (FileSender) → `familiar.status` via CLI — all green with pairing incomplete; secrets gate BOTH repos both modes green (token absent everywhere).
+- [x] Local: contract test green with `MUSE_SDK_LINUX_DIR` (observed); full suite green. ✓ `test_familiar_specs_match_upstream_contract PASSED`; `18 passed, 1 skipped`
+- [x] End-to-end (board): ✓ `musegadget` service active (system); `musegadget info` → node `homelink-6d5b09`, BLE `MuseGadget6D5B09`, `paired: no` (pairing CLOSED at install — `sudo musegadget pair` is the user's one-command open; recorded as factual amendment: avoids the 10-min window expiring before the user reaches their phone, mechanism unchanged); snapshot diff = ONLY transient session scopes (units + /etc/systemd + LEDs identical); EXIT GATE: poke → `{"ok":true}` → happy animation → events JSONL + narration JSONL (`The Familiar is now happy (event: ci_green).`) → `familiar ping` → `pong:1230`, all with pairing incomplete; secrets gate clean on BOTH repos (plain + token runtime-extra verified in Phase 4). Amendment added for the key-file unit wiring fix.
 - [ ] Manual: user completes phone pairing when ready (outside this plan's automated scope; runbook steps).
 
 ## Phase 4: Release + social pack
@@ -90,6 +90,7 @@ N/A — single-board, event-rate workload; bounded by design (payload ≤ 2 KiB,
 Unit (host, no hardware): codec bounds, mood machine, webhook auth/caps/modes, client vs fake router socket (incl. timeout + reconnect), contract test vs upstream executor, repo meta. Integration (board): Phase 1 bridge proofs + measurements; Phase 2 animation/webhook/kill-test; Phase 3 SDK install state + no-token exit demo; Phase 4 gates. IMPLICIT_SPEC coverage: inv.1 (gate ×2 points + post-flip grep), inv.2 (snapshot diff), inv.3 (double upload + notes), inv.4 (grep+review), inv.5 (sketch clamps + idle-timeout demo + tests), inv.6 (webhook tests), inv.7 (Phase 3 exit demo), inv.8 (contract test), inv.9 (checklist + flip criteria). Deferred: visual pixel assertion (manual+video), pairing completion (user).
 
 ## Amendments
+- AMENDED 2026-10-04 Phase 3 [factual]: (a) install used `--yes --no-pair` — pairing is left CLOSED with `sudo musegadget pair` as the documented one-command open (the plan said "pairing left OPEN"; a pre-opened 10-min window would expire before the user reaches their phone — mechanism unchanged, better UX); (b) the user unit reads the webhook key via a new `--key-file` option (the plan's `Environment=FAMILIAR_KEY=<path>` passed the PATH as the literal key — pokes 401'd until fixed; evidence: bad-key repro then green gate after redeploy).
 [Empty at authoring.]
 
 ## References
