@@ -62,9 +62,9 @@ N/A — single-board, event-rate workload; bounded by design (payload ≤ 2 KiB,
 - Tests (host): codec bounds (values ≤ 7, 104 length, period clamp), mood transitions, webhook (wrong-key 401, oversize 413, flood → 429 + queue bound, loopback/LAN bind modes), client against an in-process FAKE router socket (msgpack server: ping/show/clear + timeout behavior).
 - Deploy via tar-over-ssh; `familiar-engine.service` (user unit) copied from unoq pattern: NTP gate, ExecStopPost = bridge clear + LED reset hook.
 ### Success Criteria
-- [ ] Local: full suite green with NO board attached (fake router socket + fake trees) · miss localizes to: engine/client/webhook layer.
+- [x] Local: full suite green with NO board attached (fake router socket + fake trees) · miss localizes to: engine/client/webhook layer. ✓ `18 passed` (codec bounds, mood machine, fake-router client incl. reconnect/timeout/error, webhook auth/oversize/flood/queue-drop, engine heartbeat+hot)
 - [ ] End-to-end (board): `familiar show happy` → animation on matrix; `familiar serve` + `curl -X POST localhost:8123/poke -H "X-Familiar-Key: …" -d '{"kind":"ci_green"}'` → happy animation + event JSONL line; kill-test port green (stop → matrix+LEDs clear; MCU idle timeout backstop demonstrated by killing the engine WITHOUT stop hooks once — matrix falls to the dim idle glyph ≤ 30 s (the MCU idle timeout)).
-- [ ] Manual: watch one full mood animation (video for release assets).
+- [ ] Manual: watch one full mood animation (video for release assets — creature visibly animating confirmed via RPC/timing; eyes-on confirmation folds into the Phase 4 video).
 
 ## Phase 3: Muse wiring + the no-token exit gate
 ### Changes

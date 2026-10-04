@@ -1,0 +1,16 @@
+[Unit]
+Description=muse-familiar engine (webhook-fed pixel creature)
+Documentation=https://github.com/nitishagar/muse-familiar
+
+[Service]
+Type=simple
+ExecStartPre=%h/muse-familiar/units/ntp_gate.sh
+Environment=PYTHONPATH=%h/muse-familiar
+Environment=FAMILIAR_KEY=%h/.config/familiar/key
+ExecStart=%h/.local/bin/uv run --with msgpack --directory %h/muse-familiar python3 -m familiar.engine
+ExecStopPost=%h/muse-familiar/units/display_reset.sh
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target
