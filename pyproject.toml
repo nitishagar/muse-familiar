@@ -1,0 +1,16 @@
+[project]
+name = "muse-familiar"
+version = "0.1.0"
+description = "A pixel creature for the Arduino UNO Q — an open-source Muse gadget living on the LED matrix"
+requires-python = ">=3.10"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["familiar"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
