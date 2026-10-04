@@ -161,3 +161,81 @@ evidence gap. All are one-assertion fixes; none indicates deception or
 structural rot. Not PASS (Importants exist), nowhere near MAJOR-FAIL.
 
 VERDICT: MINOR-FAIL
+
+---
+
+# Round 2 — re-validation after fix commit (0825d89, "Review fixes")
+
+Note: the commit landed as 0825d89 on a rebased history (referenced as a666ee6
+in the request); message and content match the described fixes. Board still
+untouched; working tree left clean; no commits made.
+
+## Baselines (all as claimed)
+- with msgpack: **23 passed, 1 skipped** — stable across 3 consecutive runs (deterministic).
+- bare (no `--with msgpack`): **4 passed, 2 skipped** — both skips still for the
+  right reasons (module importorskip; missing `MUSE_SDK_LINUX_DIR`).
+- with `MUSE_SDK_LINUX_DIR`: **24 passed** (contract test executes; the
+  whole-contract guard ran, so every upstream spec has description+required).
+
+## Mutation probes re-run on the four Importants
+
+Probes were re-run with `__pycache__` purged before/after each mutation:
+fast same-size same-second rewrites (e.g. `20.0`→`45.0`→restore) otherwise
+leave a stale bytecode file that pytest happily loads — an artifact of the
+probe loop, not a repo defect (documented here so future rounds aren't fooled).
+
+| Probe | Expected killer | Result |
+|---|---|---|
+| P1 `bind = "0.0.0.0"` unconditionally | `test_webhook_bind_modes` | **killed** (asserts real `server_address` 127.0.0.1 default / 0.0.0.0 lan) |
+| P2 `CHUNK_FRAMES = 4` | `test_client_chunk_bound_matches_router_cap` | **killed** |
+| P3 `HEARTBEAT_S = 45.0` | `test_heartbeat_fits_inside_sketch_idle_timeout` | **killed** |
+| P3b lie `SKETCH_IDLE_TIMEOUT_S = 35.0` | same (`== 30.0` arm) | **killed** |
+| P4a passthrough planted in `muse_integration/*.py` | `test_no_raw_router_passthrough_outside_the_client` | **killed** |
+| P4b passthrough planted in `muse_integration/COMMANDS.md` (executor paste-in) | same | **killed** — the .md include matters: the runbook is where a paste-in passthrough would realistically live |
+| P6 sanity `RATE_LIMIT_PER_MIN = 13` | `test_webhook_rate_limit` | **killed** (round-1 kills still hold) |
+
+All four Important findings are closed by tests that verifiably kill their
+mutations. T4's allowlist is exactly two files (sanctioned client +
+kill_test's read-only `ls -l`, line-verified) and no false positives on the
+clean tree.
+
+## New/changed code reviewed adversarially
+- Webhook hardening is real, not just new tests: rate-limit moved BEFORE auth
+  (failures are no longer a free channel), Content-Length parse guarded
+  (garbage → treated oversize; negative rejected), keys compared as UTF-8
+  bytes (no non-ASCII TypeError), do_POST wrapped so peers never get a
+  traceback. `test_webhook_bad_length_header_and_garbage_key` exercises the
+  raw-header path via `http.client` — correct tool for the job.
+- Engine: LOCK_SH for the engine lifetime vs upload.sh's LOCK_EX (single-writer
+  discipline, inv.5b) — behavior not host-tested (two-process flock), but
+  units-side and consistent with the plan; sketch negative-period guard is a
+  sane MCU-side fix.
+- Test diff is additive + tightening only (exact `BridgeTimeout` /
+  `match="not available"`, `webhook.QUEUE_MAX` fixture, dead lines removed);
+  no assertion weakened.
+
+## Residuals (Nits — none verdict-blocking)
+1. The chunk pin is declarative: a mutation that bypasses the constant in the
+   loop (`range(0, total, 99)` with `CHUNK_FRAMES = 2` intact) still passes —
+   a 4-frame mood would silently ship one 2-frame chunk. One behavioral
+   assertion (chunk count == ceil(total/2), each payload ≤ 208 chars) in
+   `test_client_ping_and_chunked_show` would close it.
+2. Engine-test isolation covers `EVENTS_FILE`/narration (verified: no appends
+   to the real `~/.local/state/*.jsonl` this round) but the new `run()` flock
+   creates the real `~/.local/state/familiar.lock` (confirmed on-host).
+   Monkeypatch `LOCK_PATH` too.
+3. `SKETCH_IDLE_TIMEOUT_S == 30.0` pins the value, not the .ino: if
+   `IDLE_TIMEOUT_MS` ever drifts in the sketch the host test can't see it
+   (grep the .ino in the test if you want it airtight).
+4. `test_webhook_bad_length_header_and_garbage_key` allows `status == 200`
+   for the non-ASCII-key case — impossible in practice (can't equal
+   "right-key"), but the loose arm costs nothing to drop.
+
+## Round 2 verdict
+
+Every Round-1 Important now has a killing test, re-verified by re-running the
+exact mutations (plus lying-constant and .md/.py injection variants); all
+round-1 killed mutants stay killed; suite deterministic and skip-honest; no
+weakening in the diff. Remaining items are polish nits. 
+
+VERDICT: PASS

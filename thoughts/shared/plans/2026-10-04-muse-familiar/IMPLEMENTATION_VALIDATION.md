@@ -144,3 +144,85 @@ system, secrecy, or safety invariant is broken. Fix both (or amend the plan) bef
 public flip.
 
 VERDICT: MINOR-FAIL
+
+---
+
+# Round 2 — re-verification after the fix commit (same reviewer, fresh pass)
+
+Reviewed HEAD `0825d89` ("Review fixes: flock discipline, upload.sh password wiring, …").
+Note for the trail: history was rewritten after the handoff — the cited `a666ee6` no longer
+exists; `4803de3`→`54c0c51`, `7cda232`→`c9347f7`, fix commit → `0825d89`. This reviewer's
+Round-1 file was committed unmodified (verified byte-for-byte against what was written).
+A concurrent session was also cycling the board service during verification (journal
+09:31–09:37) — final state settled; deployed tree now matches repo HEAD md5-for-md5
+(engine.py `d128320…`, upload.sh `4a8d4a6…`, webhook.py `f6fbe30…`, kill_test.sh `cef2c0…`).
+
+## Round-1 Important findings — both FIXED (verified)
+
+1. **Flock discipline — FIXED and live-verified.** `engine.py` now holds `LOCK_SH` on
+   `~/.local/state/familiar.lock` (same `FAMILIAR_LOCK` env as upload.sh) for the whole
+   `run()` lifetime, released in `finally` (kernel-released on SIGKILL); `upload.sh` takes
+   `flock -w 30 -x` with a stop-the-engine hint; the false comment is gone. On the board,
+   with the engine active, a non-blocking EXCLUSIVE probe fails (rc=1) — the shared lock is
+   genuinely held; mutual exclusion is real. (CLI one-shots `show`/`clear` remain lockless —
+   interactive tools, acceptable.)
+2. **Upload password — FIXED.** `upload.sh` fails fast without `UNOQ_UPLOAD_PASSWORD`,
+   wires it via `--upload-field "password=…"`; README uses `read -rs … && export` (never in
+   shell history) and adds `chmod 600` on the key file. Matches the BRIDGE_FACTS-recorded
+   flow.
+
+## Round-2 findings
+
+### Important
+
+1. **The fix commit regressed upload.sh's port auto-detection — the shipped quickstart
+   path is broken.** The sed replacement in the port-detection line now contains a literal
+   `0x01` control byte where the `\1` backreference must be (pre-fix blob `ce17378…` has
+   correct `\1`; HEAD/deployed blob `d9b24c2…` has `\x01`). Verified against the real
+   board: the exact pipeline from the deployed script, fed live
+   `arduino-cli board list --format json`, emits `\x01\n\x01` — so `PORT` becomes a single
+   control byte, passes the `[ -n "$PORT" ]` guard, and `arduino-cli upload -p "\x01"`
+   cannot succeed. The handoff's "verified live: upload.sh flashed the corrected sketch"
+   cannot have exercised this path (it must have used `FAMILIAR_UPLOAD_PASSWORD`'s sibling
+   `FAMILIAR_UPLOAD_PORT`, or a manual upload). README step 1 still fails for a fresh
+   user. One-byte fix; add a guard (fail if the detected port does not look like a host
+   name/IP) so it can't silently regress again.
+2. **SOCIAL.md was deleted from the repo without amending the plan.** The commit message
+   cites "astroturf-optics" — a defensible product call — but PLAN.md Phase 4 still
+   requires the SOCIAL pack in three places (Desired End State line 14, Changes line 82,
+   Local criterion "`test -f` × 4" line 85, plus the Manual gate line 87), and the fix
+   commit touches no plan text. That is exactly the divergence-without-amendment the
+   plan's own header forbids, and the public repo would ship the contradiction (plan trail
+   is tracked in-tree). Fix: amend PLAN Phase 4 in the same change that removes the
+   artifact (documenting where the pack now lives), or restore the file.
+
+### Nits (claimed-vs-actual + residues)
+
+- The handoff claims "kill-test now also reads LED brightness" — **not true**:
+  `units/kill_test.sh` is byte-identical (md5 `cef2c0…`) in the repo and on the board, no
+  LED/brightness read anywhere. (The nit itself was optional; the false fix claim is the
+  issue.)
+- Residues left in place (acceptable): webhook's key-required error still says
+  "(FAMILIAR_KEY)" though the deployed flow is `--key-file`; `frames._offset_rows` remains
+  dead code.
+
+## What round 2 also verified as sound (beyond the two Importants)
+
+Suite: 23 passed + 1 skipped; with `MUSE_SDK_LINUX_DIR` → 24 passed; secrets gate clean in
+both plain and `SECRETS_GATE_EXTRA` modes. The extra hardening in the fix commit holds up:
+webhook rate-limits before auth (failed auth no longer a free channel), Content-Length is
+int-parsed with negative/garbage handled, key comparison is byte-wise (non-ASCII safe),
+handler never leaks a traceback — all covered by the new tests; the sketch gained a
+negative-period guard and was genuinely reflashed (ping uptime consistent with the ~09:33
+flash; `pong:335` during this review); the contract test now scans the whole upstream
+COMMAND_SPECS contract; new mutation pins (heartbeat < 30 s idle timeout, CHUNK_FRAMES ≤ 2,
+inv.4 scoped router-socket grep with the kill_test read-only whitelist) pin the exact
+bounds round 1 checked by hand; bind-mode tests close round-1 nit #2; test junk (nit #4)
+removed; EVENTS_FILE monkeypatched for isolation. Engine live, serving, and holding the
+shared lock while a hostile probe confirms exclusion.
+
+Both round-1 Importants are verifiably closed, but the fix commit introduced one new
+user-facing regression (upload.sh port detection) and one unamended plan divergence
+(SOCIAL.md removal), plus one fix claim that is not in the tree (kill-test LED oracle).
+
+VERDICT: MINOR-FAIL

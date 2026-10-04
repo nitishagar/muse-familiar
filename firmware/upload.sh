@@ -18,8 +18,10 @@ echo "== compile =="
 arduino-cli compile --fqbn arduino:zephyr:unoq "$SKETCH"
 
 echo "== upload =="
-PORT="${FAMILIAR_UPLOAD_PORT:-$(arduino-cli board list --format json 2>/dev/null | sed -n 's/.*"address"[[:space:]]*:[[:space:]]*"\([^"]*\)".*//p' | head -1)}"
-[ -n "$PORT" ] || { echo "no network port found (arduino-cli board list)" >&2; exit 1; }
+PORT="${FAMILIAR_UPLOAD_PORT:-$(arduino-cli board list --format json 2>/dev/null | grep -o '"address"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 | head -1)}"
+case "$PORT" in
+    *[![:alnum:]:.%_-]*|'') echo "no usable network port found (arduino-cli board list)" >&2; exit 1 ;;
+esac
 echo "uploading via $PORT"
 arduino-cli upload -p "$PORT" --fqbn arduino:zephyr:unoq \
     --upload-field "password=$UNOQ_UPLOAD_PASSWORD" "$SKETCH"

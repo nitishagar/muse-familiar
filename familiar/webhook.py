@@ -120,7 +120,7 @@ def serve(queue_: "queue.Queue[tuple[str, float]]", key: str,
           key_from_env: str = "FAMILIAR_KEY") -> ThreadingHTTPServer:
     _STATE["key"] = key or os.environ.get(key_from_env, "")
     if not _STATE["key"]:
-        raise RuntimeError("shared key required (FAMILIAR_KEY)")
+        raise RuntimeError("shared key required")
     bind = "0.0.0.0" if lan else "127.0.0.1"
     server = ThreadingHTTPServer((bind, port), make_handler(queue_))
     thread = threading.Thread(target=server.serve_forever, daemon=True)

@@ -48,24 +48,14 @@ _IDLE_BODY = (
 )
 
 
-def _with_eyes(eye_row: int, left: int, right: int, body=_IDLE_BODY,
-               level="7") -> str:
-    rows = [list(r) for r in body]
+def _with_eyes(eye_row: int, left: int, right: int, level="7") -> str:
+    rows = [list(r) for r in _IDLE_BODY]
     if 0 <= eye_row < 8:
         for col in (left, right):
             if 0 <= col < 13 and rows[eye_row][col] != "0":
                 rows[eye_row][col] = level
     return "".join("".join(r) for r in rows)
 
-
-def _offset_rows(body: _IDLE_BODY.__class__, shift: int) -> list[str]:
-    """Shift the drawing up/down within the 8-row canvas."""
-    rows = list(body)
-    if shift > 0:
-        rows = rows[shift:] + ["0" * 13] * shift
-    elif shift < 0:
-        rows = ["0" * 13] * (-shift) + rows[:shift]
-    return rows
 
 
 MOODS: dict[str, tuple[int, list[str]]] = {
