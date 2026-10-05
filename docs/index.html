@@ -25,10 +25,11 @@ header{padding:72px 0 40px;text-align:center}
 h1{font-size:clamp(34px,6vw,56px);letter-spacing:-.02em}
 h1 .fam{color:var(--blue)}
 .tagline{color:var(--dim);font-size:clamp(17px,2.6vw,22px);margin-top:10px}
+.tagline b{color:var(--ink)}
 .badges{margin-top:18px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .badge{border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;color:var(--dim)}
 .badge b{color:var(--ink);font-weight:600}
-.hero{display:grid;grid-template-columns:1fr;gap:32px;align-items:center;margin:24px 0 8px}
+.hero{display:grid;grid-template-columns:1fr;gap:32px;align-items:center;margin:24px auto 8px}
 @media(min-width:820px){.hero{grid-template-columns:440px 1fr}}
 .matrix-panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px;text-align:center}
 #matrix{display:grid;grid-template-columns:repeat(13,1fr);gap:6px;max-width:416px;margin:0 auto}
@@ -40,10 +41,16 @@ h1 .fam{color:var(--blue)}
 #matrix i.on-7{background:#8fd3ff;box-shadow:0 0 16px #50b4ffb0}
 .mood-label{margin-top:16px;color:var(--dim);font-size:14px}
 .mood-label b{color:var(--ink)}
-.moods{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+.ctl-label{margin:16px 0 8px;color:var(--dim);font-size:12.5px}
+.moods{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .moods button{background:#141d33;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:14px;cursor:pointer}
 .moods button:hover{border-color:var(--deep)}
 .moods button.active{background:var(--deep);border-color:var(--blue)}
+.kinds-ctl{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.kinds-ctl button{background:transparent;color:var(--dim);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;cursor:pointer}
+.kinds-ctl button:hover{color:var(--ink);border-color:var(--deep)}
+.kinds-ctl button.flash{color:var(--ink);border-color:var(--blue);background:#1c466e}
+@media(prefers-reduced-motion:reduce){#matrix i{transition:none}}
 .pitch{color:var(--dim)} .pitch p{margin-bottom:12px} .pitch b{color:var(--ink)}
 section{padding:44px 0;border-top:1px solid var(--line)}
 h2{font-size:24px;margin-bottom:18px;letter-spacing:-.01em}
@@ -57,13 +64,14 @@ pre{background:#0b1120;border:1px solid var(--line);border-radius:12px;padding:1
 .kinds{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .kind{border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-size:13px;color:var(--dim)}
 .kind b{color:var(--ink)}
-.safety{display:grid;gap:12px;grid-template-columns:repeat(2,1fr)}
+.safety{display:grid;gap:12px;grid-template-columns:1fr}
+@media(min-width:560px){.safety{grid-template-columns:repeat(2,1fr)}}
 @media(min-width:820px){.safety{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:480px){pre{font-size:12px}.matrix-panel{padding:20px 16px}}
 .safe{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;font-size:13.5px;color:var(--dim)}
 .safe b{display:block;color:var(--ink);margin-bottom:4px}
 .links{display:flex;gap:18px;flex-wrap:wrap;color:var(--dim);font-size:14.5px}
 footer{padding:36px 0 56px;color:#5b6980;font-size:13px;text-align:center}
-.tag{display:inline-block;margin:0 4px}
 </style>
 </head>
 <body>
@@ -82,13 +90,16 @@ footer{padding:36px 0 56px;color:#5b6980;font-size:13px;text-align:center}
   <div class="matrix-panel">
     <div id="matrix" aria-label="LED matrix showing the Familiar"></div>
     <p class="mood-label">current mood: <b id="mood-name">idle</b> — these are the real frames from <code>frames.py</code></p>
+    <p class="ctl-label">Moods</p>
     <div class="moods" id="moods"></div>
+    <p class="ctl-label">Simulate a webhook event</p>
+    <div class="kinds-ctl" id="kinds"></div>
   </div>
   <div class="pitch">
     <p>The UNO Q is two computers in a UNO: a Qualcomm core running Debian, and an STM32 core running Zephyr sketches. <b>The Familiar lives on the LED matrix in between.</b></p>
     <p>It idles and blinks. Green CI → it <b>hops</b>. Failed deploy → it <b>sulks</b>. Incident → <b>wide-eyed</b>. Hot SoC → it <b>dozes off</b>.</p>
     <p>Pair it with <b>Muse</b> and your assistant can ask how it feels, cheer it up, and read its narrations in chat: <i>"The Familiar is now happy (event: ci_green)."</i></p>
-    <p style="font-size:14px">↓ click the moods — the grid above is the exact 8×13, 3-bit-grayscale art the board renders.</p>
+    <p style="font-size:14px">Try the moods and events — the grid is the exact 8×13, 3-bit-grayscale art the board renders.</p>
   </div>
 </div>
 
@@ -162,42 +173,52 @@ for (let i = 0; i < 104; i++) {
   grid.appendChild(d); cells.push(d);
 }
 let timer = null, current = 'idle';
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function drawFrame(mood, f) {
+  const frame = MOODS[mood].frames[f % MOODS[mood].frames.length];
+  for (let i = 0; i < 104; i++)
+    cells[i].className = frame[i] === '0' ? '' : 'on-' + frame[i];
+}
 
 function show(mood) {
   const m = MOODS[mood]; if (!m) return;
   current = mood;
   document.getElementById('mood-name').textContent = mood;
-  [...document.querySelectorAll('.moods button')].forEach(b =>
+  [...document.querySelectorAll('#moods button')].forEach(b =>
     b.classList.toggle('active', b.dataset.mood === mood));
-  let f = 0;
-  const draw = () => {
-    const frame = m.frames[f % m.frames.length];
-    for (let i = 0; i < 104; i++)
-      cells[i].className = frame[i] === '0' ? '' : 'on-' + frame[i];
-    f++;
-  };
-  draw();
   clearInterval(timer);
-  timer = setInterval(draw, Math.max(m.period, 250));   // same ≤4fps cap
+  timer = null;
+  drawFrame(mood, 0);
+  if (reduceMotion) return;
+  let f = 1;
+  timer = setInterval(() => drawFrame(mood, f++), Math.max(m.period, 250));   // same ≤4fps cap
 }
 
 const bar = document.getElementById('moods');
 ['idle','happy','sad','alert','sleepy','curious','off'].forEach(mood => {
   const b = document.createElement('button');
+  b.type = 'button';
   b.textContent = mood; b.dataset.mood = mood;
   b.onclick = () => show(mood);
   bar.appendChild(b);
 });
 // feed simulation: poke kinds act like the webhook
+const kindsBar = document.getElementById('kinds');
 Object.keys(KINDS).forEach(kind => {
   const b = document.createElement('button');
-  b.textContent = kind; b.dataset.mood = KINDS[kind];
-  b.onclick = () => show(KINDS[kind]);
-  bar.appendChild(b);
+  b.type = 'button';
+  b.textContent = kind;
+  b.onclick = () => {
+    show(KINDS[kind]);
+    b.classList.add('flash');
+    setTimeout(() => b.classList.remove('flash'), 600);
+  };
+  kindsBar.appendChild(b);
 });
 
 // ambient loop: settle back to idle like the board does
-setInterval(() => {
+if (!reduceMotion) setInterval(() => {
   if (current !== 'idle' && current !== 'off' && Math.random() < 0.25)
     show('idle');
 }, 6000);

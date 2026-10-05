@@ -54,11 +54,16 @@ def write_png(path: pathlib.Path, width: int, height: int, pixels: bytes) -> Non
 # 5x7 bitmap font (rows as 5-bit ints, MSB left) for the strings we need.
 FONT = {
     "A": [0b01110, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001],
+    "B": [0b11110, 0b10001, 0b10001, 0b11110, 0b10001, 0b10001, 0b11110],
     "C": [0b01110, 0b10001, 0b10000, 0b10000, 0b10000, 0b10001, 0b01110],
     "D": [0b11110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b11110],
     "E": [0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b11111],
     "F": [0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b10000],
+    "G": [0b01110, 0b10001, 0b10000, 0b10111, 0b10001, 0b10001, 0b01111],
+    "H": [0b10001, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001],
     "I": [0b11111, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b11111],
+    "J": [0b00111, 0b00010, 0b00010, 0b00010, 0b00010, 0b10010, 0b01100],
+    "K": [0b10001, 0b10010, 0b10100, 0b11000, 0b10100, 0b10010, 0b10001],
     "L": [0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b11111],
     "M": [0b10001, 0b11011, 0b10101, 0b10101, 0b10001, 0b10001, 0b10001],
     "N": [0b10001, 0b11001, 0b10101, 0b10011, 0b10001, 0b10001, 0b10001],
@@ -67,16 +72,39 @@ FONT = {
     "Q": [0b01110, 0b10001, 0b10001, 0b10001, 0b10101, 0b10010, 0b01101],
     "R": [0b11110, 0b10001, 0b10001, 0b11110, 0b10010, 0b10001, 0b10001],
     "S": [0b01111, 0b10000, 0b10000, 0b01110, 0b00001, 0b00001, 0b11110],
+    "T": [0b11111, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100],
     "U": [0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110],
+    "V": [0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01010, 0b00100],
+    "W": [0b10001, 0b10001, 0b10001, 0b10101, 0b10101, 0b11011, 0b10001],
     "X": [0b10001, 0b10001, 0b01010, 0b00100, 0b01010, 0b10001, 0b10001],
+    "Y": [0b10001, 0b10001, 0b01010, 0b00100, 0b00100, 0b00100, 0b00100],
+    "Z": [0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b10000, 0b11111],
+    "0": [0b01110, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b01110],
+    "1": [0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110],
+    "2": [0b01110, 0b10001, 0b00001, 0b00010, 0b00100, 0b01000, 0b11111],
+    "3": [0b11111, 0b00010, 0b00100, 0b00010, 0b00001, 0b10001, 0b01110],
+    "4": [0b00010, 0b00110, 0b01010, 0b10010, 0b11111, 0b00010, 0b00010],
+    "5": [0b11111, 0b10000, 0b11110, 0b00001, 0b00001, 0b10001, 0b01110],
+    "6": [0b00110, 0b01000, 0b10000, 0b11110, 0b10001, 0b10001, 0b01110],
+    "7": [0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b01000, 0b01000],
+    "8": [0b01110, 0b10001, 0b10001, 0b01110, 0b10001, 0b10001, 0b01110],
+    "9": [0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00010, 0b01100],
     "+": [0b00000, 0b00100, 0b00100, 0b11111, 0b00100, 0b00100, 0b00000],
     "-": [0b00000, 0b00000, 0b00000, 0b11111, 0b00000, 0b00000, 0b00000],
     " ": [0] * 7,
 }
 
+OG_W, OG_H = 1200, 630
 
-def draw_text(pixels: list, W: int, x: int, y: int, text: str, scale: int,
-              rgb: tuple, dim: tuple = (16, 20, 34)) -> None:
+
+def text_extent(text: str, scale: int) -> tuple:
+    """(width, height) in pixels of a draw_text line."""
+    return len(text) * 6 * scale - scale, 7 * scale
+
+
+def draw_text(pixels: list, W: int, H: int, x: int, y: int, text: str,
+              scale: int, rgb: tuple,
+              dim: tuple = (16, 20, 34)) -> None:
     cursor = x
     for ch in text.upper():
         glyph = FONT.get(ch)
@@ -91,13 +119,29 @@ def draw_text(pixels: list, W: int, x: int, y: int, text: str, scale: int,
                     for dx in range(scale):
                         px = cursor + col * scale + dx
                         py = y + row * scale + dy
+                        if not (0 <= px < W and 0 <= py < H):
+                            continue  # clip: never wrap onto other rows
                         i = (py * W + px) * 3
                         pixels[i:i + 3] = list(color)
         cursor += 6 * scale
 
 
+# (x, y, text, scale, rgb) — every line must fit inside OG_W x OG_H.
+OG_TEXTS = [
+    (800, 140, "MUSE", 7, (96, 190, 255)),
+    (800, 205, "FAMILIAR", 7, (240, 246, 255)),
+    (800, 315, "A PIXEL CREATURE FOR", 3, (150, 160, 180)),
+    (800, 350, "ARDUINO UNO Q + MUSE", 3, (150, 160, 180)),
+    (800, 410, "OPEN SOURCE - MIT", 3, (110, 120, 145)),
+]
+
+# LED matrix geometry: 13 cols x 8 rows of dots, left of the text block.
+OG_MATRIX = {"origin_x": 64, "origin_y": 100, "pitch": 54, "led": 23,
+             "glow": 10}
+
+
 def make_og_image(moods: dict, path: pathlib.Path) -> None:
-    W, H = 1200, 630
+    W, H = OG_W, OG_H
     BG = (10, 14, 26)
     pixels = [c for _ in range(W * H) for c in BG]
 
@@ -116,20 +160,22 @@ def make_og_image(moods: dict, path: pathlib.Path) -> None:
 
     # the creature: idle frame's happy cousin (frame 0 of happy) on the left
     frame = moods["happy"]["frames"][0]
-    led, pitch, origin_x, origin_y = 26, 62, 90, 90
+    g = OG_MATRIX
     for idx, ch in enumerate(frame):
         row, col = divmod(idx, 13)
         level = int(ch)
         if level:
             blue = (60, 160, 255)
-            dot(origin_x + col * pitch, origin_y + row * pitch,
-                int(led * (0.45 + 0.55 * level / 7)), blue, glow=10)
+            dot(g["origin_x"] + col * g["pitch"],
+                g["origin_y"] + row * g["pitch"],
+                int(g["led"] * (0.45 + 0.55 * level / 7)), blue,
+                glow=g["glow"])
 
-    draw_text(pixels, W, 1000, 130, "MUSE", 10, (96, 190, 255))
-    draw_text(pixels, W, 1000, 230, "FAMILIAR", 10, (240, 246, 255))
-    draw_text(pixels, W, 960, 380, "A PIXEL CREATURE FOR", 4, (150, 160, 180))
-    draw_text(pixels, W, 960, 430, "ARDUINO UNO Q + MUSE", 4, (150, 160, 180))
-    draw_text(pixels, W, 960, 520, "OPEN SOURCE - MIT", 3, (110, 120, 145))
+    for x, y, text, scale, rgb in OG_TEXTS:
+        w, h = text_extent(text, scale)
+        assert 0 <= x and x + w <= W, f"og text overflows horizontally: {text!r}"
+        assert 0 <= y and y + h <= H, f"og text overflows vertically: {text!r}"
+        draw_text(pixels, W, H, x, y, text, scale, rgb)
 
     write_png(path, W, H, bytes(pixels))
 
@@ -163,10 +209,11 @@ header{padding:72px 0 40px;text-align:center}
 h1{font-size:clamp(34px,6vw,56px);letter-spacing:-.02em}
 h1 .fam{color:var(--blue)}
 .tagline{color:var(--dim);font-size:clamp(17px,2.6vw,22px);margin-top:10px}
+.tagline b{color:var(--ink)}
 .badges{margin-top:18px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .badge{border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;color:var(--dim)}
 .badge b{color:var(--ink);font-weight:600}
-.hero{display:grid;grid-template-columns:1fr;gap:32px;align-items:center;margin:24px 0 8px}
+.hero{display:grid;grid-template-columns:1fr;gap:32px;align-items:center;margin:24px auto 8px}
 @media(min-width:820px){.hero{grid-template-columns:440px 1fr}}
 .matrix-panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px;text-align:center}
 #matrix{display:grid;grid-template-columns:repeat(13,1fr);gap:6px;max-width:416px;margin:0 auto}
@@ -178,10 +225,16 @@ h1 .fam{color:var(--blue)}
 #matrix i.on-7{background:#8fd3ff;box-shadow:0 0 16px #50b4ffb0}
 .mood-label{margin-top:16px;color:var(--dim);font-size:14px}
 .mood-label b{color:var(--ink)}
-.moods{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+.ctl-label{margin:16px 0 8px;color:var(--dim);font-size:12.5px}
+.moods{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .moods button{background:#141d33;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:14px;cursor:pointer}
 .moods button:hover{border-color:var(--deep)}
 .moods button.active{background:var(--deep);border-color:var(--blue)}
+.kinds-ctl{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.kinds-ctl button{background:transparent;color:var(--dim);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;cursor:pointer}
+.kinds-ctl button:hover{color:var(--ink);border-color:var(--deep)}
+.kinds-ctl button.flash{color:var(--ink);border-color:var(--blue);background:#1c466e}
+@media(prefers-reduced-motion:reduce){#matrix i{transition:none}}
 .pitch{color:var(--dim)} .pitch p{margin-bottom:12px} .pitch b{color:var(--ink)}
 section{padding:44px 0;border-top:1px solid var(--line)}
 h2{font-size:24px;margin-bottom:18px;letter-spacing:-.01em}
@@ -195,13 +248,14 @@ pre{background:#0b1120;border:1px solid var(--line);border-radius:12px;padding:1
 .kinds{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .kind{border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-size:13px;color:var(--dim)}
 .kind b{color:var(--ink)}
-.safety{display:grid;gap:12px;grid-template-columns:repeat(2,1fr)}
+.safety{display:grid;gap:12px;grid-template-columns:1fr}
+@media(min-width:560px){.safety{grid-template-columns:repeat(2,1fr)}}
 @media(min-width:820px){.safety{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:480px){pre{font-size:12px}.matrix-panel{padding:20px 16px}}
 .safe{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;font-size:13.5px;color:var(--dim)}
 .safe b{display:block;color:var(--ink);margin-bottom:4px}
 .links{display:flex;gap:18px;flex-wrap:wrap;color:var(--dim);font-size:14.5px}
 footer{padding:36px 0 56px;color:#5b6980;font-size:13px;text-align:center}
-.tag{display:inline-block;margin:0 4px}
 </style>
 </head>
 <body>
@@ -220,13 +274,16 @@ footer{padding:36px 0 56px;color:#5b6980;font-size:13px;text-align:center}
   <div class="matrix-panel">
     <div id="matrix" aria-label="LED matrix showing the Familiar"></div>
     <p class="mood-label">current mood: <b id="mood-name">idle</b> — these are the real frames from <code>frames.py</code></p>
+    <p class="ctl-label">Moods</p>
     <div class="moods" id="moods"></div>
+    <p class="ctl-label">Simulate a webhook event</p>
+    <div class="kinds-ctl" id="kinds"></div>
   </div>
   <div class="pitch">
     <p>The UNO Q is two computers in a UNO: a Qualcomm core running Debian, and an STM32 core running Zephyr sketches. <b>The Familiar lives on the LED matrix in between.</b></p>
     <p>It idles and blinks. Green CI → it <b>hops</b>. Failed deploy → it <b>sulks</b>. Incident → <b>wide-eyed</b>. Hot SoC → it <b>dozes off</b>.</p>
     <p>Pair it with <b>Muse</b> and your assistant can ask how it feels, cheer it up, and read its narrations in chat: <i>"The Familiar is now happy (event: ci_green)."</i></p>
-    <p style="font-size:14px">↓ click the moods — the grid above is the exact 8×13, 3-bit-grayscale art the board renders.</p>
+    <p style="font-size:14px">Try the moods and events — the grid is the exact 8×13, 3-bit-grayscale art the board renders.</p>
   </div>
 </div>
 
@@ -300,42 +357,52 @@ for (let i = 0; i < 104; i++) {
   grid.appendChild(d); cells.push(d);
 }
 let timer = null, current = 'idle';
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function drawFrame(mood, f) {
+  const frame = MOODS[mood].frames[f % MOODS[mood].frames.length];
+  for (let i = 0; i < 104; i++)
+    cells[i].className = frame[i] === '0' ? '' : 'on-' + frame[i];
+}
 
 function show(mood) {
   const m = MOODS[mood]; if (!m) return;
   current = mood;
   document.getElementById('mood-name').textContent = mood;
-  [...document.querySelectorAll('.moods button')].forEach(b =>
+  [...document.querySelectorAll('#moods button')].forEach(b =>
     b.classList.toggle('active', b.dataset.mood === mood));
-  let f = 0;
-  const draw = () => {
-    const frame = m.frames[f % m.frames.length];
-    for (let i = 0; i < 104; i++)
-      cells[i].className = frame[i] === '0' ? '' : 'on-' + frame[i];
-    f++;
-  };
-  draw();
   clearInterval(timer);
-  timer = setInterval(draw, Math.max(m.period, 250));   // same ≤4fps cap
+  timer = null;
+  drawFrame(mood, 0);
+  if (reduceMotion) return;
+  let f = 1;
+  timer = setInterval(() => drawFrame(mood, f++), Math.max(m.period, 250));   // same ≤4fps cap
 }
 
 const bar = document.getElementById('moods');
 ['idle','happy','sad','alert','sleepy','curious','off'].forEach(mood => {
   const b = document.createElement('button');
+  b.type = 'button';
   b.textContent = mood; b.dataset.mood = mood;
   b.onclick = () => show(mood);
   bar.appendChild(b);
 });
 // feed simulation: poke kinds act like the webhook
+const kindsBar = document.getElementById('kinds');
 Object.keys(KINDS).forEach(kind => {
   const b = document.createElement('button');
-  b.textContent = kind; b.dataset.mood = KINDS[kind];
-  b.onclick = () => show(KINDS[kind]);
-  bar.appendChild(b);
+  b.type = 'button';
+  b.textContent = kind;
+  b.onclick = () => {
+    show(KINDS[kind]);
+    b.classList.add('flash');
+    setTimeout(() => b.classList.remove('flash'), 600);
+  };
+  kindsBar.appendChild(b);
 });
 
 // ambient loop: settle back to idle like the board does
-setInterval(() => {
+if (!reduceMotion) setInterval(() => {
   if (current !== 'idle' && current !== 'off' && Math.random() < 0.25)
     show('idle');
 }, 6000);
