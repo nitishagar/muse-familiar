@@ -205,7 +205,9 @@ HTML = """<!doctype html>
 body{background:var(--bg);color:var(--ink);font:16px/1.6 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
 a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 .wrap{max-width:960px;margin:0 auto;padding:0 24px}
-header{padding:72px 0 40px;text-align:center}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding-top:22px;font-size:14px}
+.brand{color:var(--dim)} .brand b{color:var(--ink);font-weight:600}
+header{padding:52px 0 40px;text-align:center}
 h1{font-size:clamp(34px,6vw,56px);letter-spacing:-.02em}
 h1 .fam{color:var(--blue)}
 .tagline{color:var(--dim);font-size:clamp(17px,2.6vw,22px);margin-top:10px}
@@ -213,7 +215,7 @@ h1 .fam{color:var(--blue)}
 .badges{margin-top:18px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .badge{border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;color:var(--dim)}
 .badge b{color:var(--ink);font-weight:600}
-.hero{display:grid;grid-template-columns:1fr;gap:32px;align-items:center;margin:24px auto 8px}
+.hero{display:grid;grid-template-columns:1fr;gap:32px;align-items:center;margin:24px auto 64px}
 @media(min-width:820px){.hero{grid-template-columns:440px 1fr}}
 .matrix-panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px;text-align:center}
 #matrix{display:grid;grid-template-columns:repeat(13,1fr);gap:6px;max-width:416px;margin:0 auto}
@@ -236,29 +238,47 @@ h1 .fam{color:var(--blue)}
 .kinds-ctl button.flash{color:var(--ink);border-color:var(--blue);background:#1c466e}
 @media(prefers-reduced-motion:reduce){#matrix i{transition:none}}
 .pitch{color:var(--dim)} .pitch p{margin-bottom:12px} .pitch b{color:var(--ink)}
-section{padding:44px 0;border-top:1px solid var(--line)}
-h2{font-size:24px;margin-bottom:18px;letter-spacing:-.01em}
-.steps{display:grid;gap:16px}
+section.band{padding:64px 0;border-top:1px solid var(--line)}
+section.band.alt{background:#0c1324}
+.sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:28px}
+.sec-n{color:var(--blue);font:600 13px ui-monospace,SFMono-Regular,Menlo,monospace}
+.sec-head h2{font-size:clamp(21px,3.4vw,26px);letter-spacing:-.01em}
+.sec-head::after{content:"";flex:1;min-width:32px;height:1px;background:var(--line);align-self:center}
+.steps{display:grid;gap:28px}
 @media(min-width:820px){.steps{grid-template-columns:repeat(3,1fr)}}
-.step{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
-.step .n{color:var(--blue);font-weight:700;font-size:13px}
-.step h3{font-size:16px;margin:6px 0}
-.step p{color:var(--dim);font-size:14px}
+.step{border-top:2px solid var(--deep);padding-top:14px}
+.step .n{color:var(--blue);font:700 13px ui-monospace,SFMono-Regular,Menlo,monospace}
+.step h3{font-size:17px;margin:8px 0 6px}
+.step p{color:var(--dim);font-size:14.5px}
+.term{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#0b1120}
+.term-bar{display:flex;align-items:center;gap:10px;padding:9px 14px;font-size:12.5px;color:var(--dim);border-bottom:1px solid var(--line);background:#0d1528}
+.term-bar .dots{display:flex;gap:6px}
+.term-bar .dots i{width:10px;height:10px;border-radius:50%;background:#22314f}
+.term pre{border:0;border-radius:0}
 pre{background:#0b1120;border:1px solid var(--line);border-radius:12px;padding:16px;overflow:auto;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;color:#c9e3ff}
-.kinds{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.kinds{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .kind{border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-size:13px;color:var(--dim)}
 .kind b{color:var(--ink)}
+.gadget{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 24px}
+.gadget p{color:var(--dim);max-width:740px}
+.cmds{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.cmds code{background:#0b1120;border:1px solid var(--line);border-radius:8px;padding:5px 12px;font:13px ui-monospace,SFMono-Regular,Menlo,monospace;color:#c9e3ff}
 .safety{display:grid;gap:12px;grid-template-columns:1fr}
 @media(min-width:560px){.safety{grid-template-columns:repeat(2,1fr)}}
 @media(min-width:820px){.safety{grid-template-columns:repeat(4,1fr)}}
-@media(max-width:480px){pre{font-size:12px}.matrix-panel{padding:20px 16px}}
-.safe{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;font-size:13.5px;color:var(--dim)}
+@media(max-width:480px){pre{font-size:12px}.matrix-panel{padding:20px 16px}section.band{padding:48px 0}}
+.safe{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;font-size:13.5px;color:var(--dim)}
 .safe b{display:block;color:var(--ink);margin-bottom:4px}
-.links{display:flex;gap:18px;flex-wrap:wrap;color:var(--dim);font-size:14.5px}
-footer{padding:36px 0 56px;color:#5b6980;font-size:13px;text-align:center}
+.linklist{border-top:1px solid var(--line)}
+.linklist a{display:flex;align-items:baseline;gap:12px;padding:13px 6px;border-bottom:1px solid var(--line);color:var(--ink);font-size:15px}
+.linklist a:hover{text-decoration:none;background:#101a30}
+.linklist .desc{color:var(--dim);font-size:13px}
+.linklist .arr{margin-left:auto;color:var(--blue)}
+footer{padding:32px 0 56px;color:#5b6980;font-size:13px;text-align:center}
 </style>
 </head>
 <body>
+<nav class="wrap topbar"><span class="brand">muse-<b>familiar</b></span><a href="https://github.com/nitishagar/muse-familiar" target="_blank" rel="noopener">GitHub ↗</a></nav>
 <header class="wrap">
   <h1>muse-<span class="fam">familiar</span></h1>
   <p class="tagline">A pixel creature living on your <b>Arduino UNO Q</b>'s LED matrix —<br>fed by webhooks, seen and heard by <b>Muse</b>.</p>
@@ -287,22 +307,25 @@ footer{padding:36px 0 56px;color:#5b6980;font-size:13px;text-align:center}
   </div>
 </div>
 
-<section class="wrap">
-  <h2>How it works</h2>
+<section class="band">
+<div class="wrap">
+  <div class="sec-head"><span class="sec-n">01</span><h2>How it works</h2></div>
   <div class="steps">
     <div class="step"><span class="n">01</span><h3>Feed it</h3><p>GitHub, Home Assistant, or <code>curl</code> hit a tiny hardened webhook on the board's Linux side. Key'd, rate-limited, loopback by default.</p></div>
     <div class="step"><span class="n">02</span><h3>Feel it</h3><p>A mood engine turns events into frame art and pushes animations over the board's msgpack-RPC bridge — 19&nbsp;ms round-trip, chunked around the router's 256-byte cap.</p></div>
     <div class="step"><span class="n">03</span><h3>Show it</h3><p>A Zephyr sketch on the STM32U585 renders frames — with fps, brightness and idle-timeout safety enforced in the MCU itself, so a crash can never leave it strobing.</p></div>
   </div>
+</div>
 </section>
 
-<section class="wrap">
-  <h2>Make it yours</h2>
-  <pre>git clone https://github.com/nitishagar/muse-familiar &amp;&amp; cd muse-familiar
+<section class="band alt">
+<div class="wrap">
+  <div class="sec-head"><span class="sec-n">02</span><h2>Make it yours</h2></div>
+  <div class="term"><div class="term-bar"><span class="dots"><i></i><i></i><i></i></span><span>uno-q — quickstart</span></div><pre>git clone https://github.com/nitishagar/muse-familiar &amp;&amp; cd muse-familiar
 read -rs UNOQ_UPLOAD_PASSWORD &amp;&amp; export UNOQ_UPLOAD_PASSWORD
 cd firmware &amp;&amp; ./upload.sh          # flash the frame player
 # ... then the engine + a one-line webhook:
-curl -X POST localhost:8123/poke -H "X-Familiar-Key: $KEY" -d '{"kind":"ci_green"}'</pre>
+curl -X POST localhost:8123/poke -H "X-Familiar-Key: $KEY" -d '{"kind":"ci_green"}'</pre></div>
   <div class="kinds">
     <span class="kind"><b>ci_green</b> / deploy_ok / merge → happy</span>
     <span class="kind"><b>ci_red</b> / deploy_fail → sad</span>
@@ -310,32 +333,42 @@ curl -X POST localhost:8123/poke -H "X-Familiar-Key: $KEY" -d '{"kind":"ci_green
     <span class="kind"><b>mention</b> / poke → curious</span>
     <span class="kind"><b>hot</b> → sleepy</span>
   </div>
+</div>
 </section>
 
-<section class="wrap">
-  <h2>It's a real Muse gadget</h2>
-  <p style="color:var(--dim);max-width:720px">Meta's <a href="https://github.com/facebookincubator/muse-gadget-sdk" target="_blank" rel="noopener">Muse gadget SDK</a> runs on the Debian side. One command opens pairing (<code>sudo musegadget pair</code>), the Muse app adopts it, and the repo ships contract-tested <code>familiar.status / show / feed</code> commands — the first open-source Muse gadget that actuates real hardware on Linux.</p>
+<section class="band">
+<div class="wrap">
+  <div class="sec-head"><span class="sec-n">03</span><h2>It's a real Muse gadget</h2></div>
+  <div class="gadget">
+    <p>Meta's <a href="https://github.com/facebookincubator/muse-gadget-sdk" target="_blank" rel="noopener">Muse gadget SDK</a> runs on the Debian side. One command opens pairing (<code>sudo musegadget pair</code>), the Muse app adopts it, and the repo ships contract-tested commands — the first open-source Muse gadget that actuates real hardware on Linux.</p>
+    <div class="cmds"><code>familiar.status</code><code>familiar.show</code><code>familiar.feed</code></div>
+  </div>
+</div>
 </section>
 
-<section class="wrap">
-  <h2>Safety, baked in</h2>
+<section class="band alt">
+<div class="wrap">
+  <div class="sec-head"><span class="sec-n">04</span><h2>Safety, baked in</h2></div>
   <div class="safety">
     <div class="safe"><b>≤ 4 fps, 3-bit</b>Photosensitivity and brightness caps enforced in the sketch, not just the host.</div>
     <div class="safe"><b>Idle timeout</b>No heartbeat for 30 s → the Familiar dozes to a dim glyph. Crashes can't strand it.</div>
     <div class="safe"><b>Hardened webhook</b>Shared key (constant-time), 2 KiB cap, 12/min rate limit, bounded queue.</div>
     <div class="safe"><b>User-space only</b>User systemd units, one project dir, stock board services untouched, clean teardown.</div>
   </div>
+</div>
 </section>
 
-<section class="wrap">
-  <h2>Links</h2>
-  <div class="links">
-    <a href="https://github.com/nitishagar/muse-familiar" target="_blank" rel="noopener">GitHub repo</a>
-    <a href="https://gadgets.muse.ai/" target="_blank" rel="noopener">Muse Gadgets</a>
-    <a href="https://github.com/facebookincubator/muse-gadget-sdk" target="_blank" rel="noopener">muse-gadget-sdk</a>
-    <a href="https://docs.arduino.cc/hardware/uno-q/" target="_blank" rel="noopener">Arduino UNO Q</a>
-    <a href="https://discord.gg/3bhjCkZdd6" target="_blank" rel="noopener">Muse Discord</a>
+<section class="band">
+<div class="wrap">
+  <div class="sec-head"><span class="sec-n">05</span><h2>Links</h2></div>
+  <div class="linklist">
+    <a href="https://github.com/nitishagar/muse-familiar" target="_blank" rel="noopener"><span>GitHub repo</span><span class="desc">source, firmware + webhook</span><span class="arr">→</span></a>
+    <a href="https://gadgets.muse.ai/" target="_blank" rel="noopener"><span>Muse Gadgets</span><span class="desc">gadget directory</span><span class="arr">→</span></a>
+    <a href="https://github.com/facebookincubator/muse-gadget-sdk" target="_blank" rel="noopener"><span>muse-gadget-sdk</span><span class="desc">Meta's SDK</span><span class="arr">→</span></a>
+    <a href="https://docs.arduino.cc/hardware/uno-q/" target="_blank" rel="noopener"><span>Arduino UNO Q</span><span class="desc">board docs</span><span class="arr">→</span></a>
+    <a href="https://discord.gg/3bhjCkZdd6" target="_blank" rel="noopener"><span>Muse Discord</span><span class="desc">community chat</span><span class="arr">→</span></a>
   </div>
+</div>
 </section>
 
 <footer class="wrap">

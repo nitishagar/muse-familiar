@@ -17,7 +17,11 @@ def test_hero_keeps_centered_margins():
     # .hero must not override .wrap's auto side-margins (page went left-aligned).
     m = re.search(r"\.hero\{([^}]*)\}", _landing_html())
     assert m, ".hero rule missing from landing page"
-    assert "margin:24pxauto8px" in m.group(1).replace(" ", "")
+    mm = re.search(r"margin:([^;]+)", m.group(1))
+    assert mm, ".hero rule has no margin"
+    parts = mm.group(1).split()
+    sides = [parts[1]] if len(parts) == 3 else parts[1::2] if len(parts) == 4 else parts
+    assert sides and all(s == "auto" for s in sides), f"hero not centered: {parts}"
 
 
 def test_mood_and_event_controls_are_separate_groups():
@@ -25,6 +29,12 @@ def test_mood_and_event_controls_are_separate_groups():
     assert 'id="moods"' in html and 'id="kinds"' in html
     # active highlight must apply to the mood row only (kinds used to stick).
     assert "querySelectorAll('#moods button')" in html
+
+
+def test_sections_use_separated_bands():
+    html = _landing_html()
+    assert html.count('class="band') >= 5, "sections must use band layout"
+    assert "sec-head" in html, "sections must have numbered headers"
 
 
 def test_og_text_fits_canvas_and_font_covers_it():
