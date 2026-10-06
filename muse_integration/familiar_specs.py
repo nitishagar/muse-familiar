@@ -81,14 +81,14 @@ def register(namespace: dict, repo: str | None = None,
 
     def _status(executor, params):
         return executor.system_run(
-            {"command": _cli_cmd(repo, uv_bin, "ping")})
+            {"command": _cli_cmd(repo, uv_bin, "ping")}, None)
 
     def _show(executor, params):
         mood = params.get("mood", "idle")
         if mood not in FAMILIAR_MOODS:
             return _error("bad mood")
         return executor.system_run(
-            {"command": _cli_cmd(repo, uv_bin, f"show {mood}")})
+            {"command": _cli_cmd(repo, uv_bin, f"show {mood}")}, None)
 
     def _feed(executor, params):
         kind = params.get("kind", "poke")
@@ -97,7 +97,7 @@ def register(namespace: dict, repo: str | None = None,
         return executor.system_run({"command":
             f'curl -s -m 5 -X POST localhost:8123/poke '
             f'-H "X-Familiar-Key: $(cat {key_file})" '
-            f'-d \'{{"kind": "{kind}"}}\''})
+            f'-d \'{{"kind": "{kind}"}}\''}, None)
 
     handlers = {"familiar.status": _status, "familiar.show": _show,
                 "familiar.feed": _feed}

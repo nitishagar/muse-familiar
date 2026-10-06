@@ -73,8 +73,10 @@ def test_example_yaml_parses():
     loader = type("HALoader", (yaml.SafeLoader,), {})
     loader.add_constructor("!secret", lambda l, node: l.construct_scalar(node))
     action = yaml.safe_load((REPO / "examples" / "github-action.yml").read_text())
-    assert "runs" in action and action["runs"]["using"] == "composite"
-    assert action["runs"]["steps"][0]["continue-on-error"] is True
+    steps = action["jobs"]["build"]["steps"]
+    poke = [s for s in steps if s.get("name") == "Poke the Familiar"][0]
+    assert poke["continue-on-error"] is True      # rate bucket must not fail CI
+    assert "${{ secrets.FAMILIAR_KEY" in str(poke)
     ha = yaml.load((REPO / "examples" / "home-assistant.yaml").read_text(),
                    Loader=loader)
     assert "rest_command" in ha and "familiar_poke" in ha["rest_command"]

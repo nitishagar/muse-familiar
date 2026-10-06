@@ -1,35 +1,35 @@
-# Feed the Familiar from GitHub Actions — copy this step into any workflow.
+# Feed the Familiar from GitHub Actions — copy the "Poke the Familiar"
+# STEP below into any workflow/job. It is an inline step (not a composite
+# action): composite actions cannot read `secrets.*` or `job.status`, so a
+# reusable `uses:` form would silently break.
+#
 # The Familiar shares one 12 req/min rate bucket per source, so the step is
 # deliberately non-fatal: a rate-limited poke must never fail your CI.
 #
-# Repo setup (once): Settings → Secrets and variables → Actions → new secret
+# Repo setup (once): Settings → Secrets and variables → Actions → new secrets
 #   FAMILIAR_URL   = http://<board-ip>:8123/poke     (engine started with --lan)
 #   FAMILIAR_KEY   = the board's ~/.config/familiar/key contents
-#
-# Drop into a job like:
-#
-#   notify-familiar:
-#     if: always()
-#     runs-on: ubuntu-latest
-#     steps:
-#       - uses: actions/checkout@v4
-#       - uses: ./.github/actions/familiar-poke   # or inline the step below
 
-name: familiar-poke
-description: Tell the Familiar on an Arduino UNO Q how this run went
-runs:
-  using: "composite"
-  steps:
-    - name: Poke the Familiar
-      if: always()
-      continue-on-error: true     # shared rate bucket — never fail CI over a pet
-      shell: bash
-      env:
-        FAMILIAR_URL: ${{ secrets.FAMILIAR_URL }}
-        FAMILIAR_KEY: ${{ secrets.FAMILIAR_KEY }}
-        KIND: ${{ job.status == 'success' && 'ci_green' || 'ci_red' }}
-      run: |
-        curl -sS -m 5 -X POST "$FAMILIAR_URL" \
-             -H "X-Familiar-Key: $FAMILIAR_KEY" \
-             -H "Content-Type: application/json" \
-             -d "{\"kind\":\"$KIND\"}" || echo "familiar poke failed (offline or rate-limited?) — non-fatal"
+name: example — notify the Familiar
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "put your real build/test steps here"
+
+      - name: Poke the Familiar
+        if: always()
+        continue-on-error: true     # shared rate bucket — never fail CI over a pet
+        shell: bash
+        env:
+          FAMILIAR_URL: ${{ secrets.FAMILIAR_URL }}
+          FAMILIAR_KEY: ${{ secrets.FAMILIAR_KEY }}
+          KIND: ${{ job.status == 'success' && 'ci_green' || 'ci_red' }}
+        run: |
+          curl -sS -m 5 -X POST "$FAMILIAR_URL" \
+               -H "X-Familiar-Key: $FAMILIAR_KEY" \
+               -H "Content-Type: application/json" \
+               -d "{\"kind\":\"$KIND\"}" || echo "familiar poke failed (offline or rate-limited?) — non-fatal"

@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import argparse
 import glob
-import importlib.util
 import os
 import shutil
 import subprocess
@@ -62,14 +61,28 @@ def backups(executor: str) -> list[str]:
                                          BACKUP_GLOB)))
 
 
-def load_specs(executor_path: str) -> dict:
-    """Load the (patched or not) executor as a fresh module and return its
-    COMMAND_SPECS — used for post-install verification."""
-    spec = importlib.util.spec_from_file_location(
-        "executor_verify", executor_path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module.COMMAND_SPECS
+def verify_registration(venv: str, executor: str) -> list[str]:
+    """Import the patched executor the way the service does — as a package,
+    under the venv's python when one exists — and return the familiar.*
+    specs that registered. Fresh-file exec is NOT a valid oracle: the real
+    executor reads `from musegadget import __version__` at module level
+    and decorates with @dataclass, which both need package context.
+    """
+    site_packages = os.path.dirname(os.path.dirname(executor))
+    code = ("import sys; sys.path.insert(0, %r); "
+            "import musegadget.executor as e; "
+            "print(' '.join(sorted(k for k in e.COMMAND_SPECS "
+            "if k.startswith('familiar.'))))" % site_packages)
+    venv_python = os.path.join(venv, "bin", "python")
+    if os.path.isfile(venv_python) and os.access(venv_python, os.X_OK):
+        argv = [venv_python, "-c", code]
+    else:
+        argv = [sys.executable, "-c", code]
+    proc = subprocess.run(argv, capture_output=True, text=True, timeout=120)
+    if proc.returncode != 0:
+        raise RuntimeError(f"verification import failed: "
+                           f"{proc.stderr.strip()[:400]}")
+    return proc.stdout.split()
 
 
 def restart_service(dry: bool = False) -> None:
@@ -164,17 +177,16 @@ def main(argv: list[str] | None = None) -> int:
             os.unlink(tmp)
 
     try:
-        specs = load_specs(executor)  # verify with the REAL repo import
+        registered = verify_registration(ns.venv, executor)
     except Exception as exc:
         shutil.copy2(backup, executor)
-        raise SystemExit(f"patched executor failed to load ({exc!r}) — "
-                         "backup restored")
-    registered = [k for k in specs if k.startswith("familiar.")]
+        raise SystemExit(f"patched executor failed verification ({exc!r}) "
+                         "— backup restored")
     if not registered:
         shutil.copy2(backup, executor)
         raise SystemExit("patched executor loaded but familiar.* specs "
                          "missing — backup restored; inspect the hook")
-    print(f"install.py: verified registration: {' '.join(sorted(registered))}")
+    print(f"install.py: verified registration: {' '.join(registered)}")
 
     if not ns.no_restart:
         restart_service()

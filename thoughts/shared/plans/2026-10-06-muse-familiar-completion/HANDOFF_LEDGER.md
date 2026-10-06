@@ -40,6 +40,20 @@ in-place, resume unavailable). Start HEAD: 19e3234.
   backup name (clobber) + --remove didn't delete baks[0]. CONFIRMED both —
   backup names counter-suffixed; --remove deletes all backups.
 
+## Hypotheses (impl review round 1 — MAJOR-FAIL)
+- I1 verification-vs-real-SDK: H=fresh-file exec is not a valid oracle for
+  the real executor (module-level `from musegadget import __version__`,
+  @dataclass needing sys.modules, positional system_run timeout_ms).
+  Check: reviewer's verbatim-copy repro; re-run locally. CONFIRMED —
+  verify_registration now imports as a package (venv python when present,
+  sys.path=site-packages parent); handlers pass positional None; stub
+  upgraded to mirror all three traits; local real-file repro green.
+- I1 residual: ModuleNotFoundError under fixed verifier — H=path inserted
+  was the package dir, not site-packages. CONFIRMED (dirname x2).
+- I2/I3/I4: exact-drop-in preview, inline-step example (composite actions
+  cannot read secrets/job contexts), drop-in+restart only on change.
+  CONFIRMED by re-run output.
+
 ## Decisions (phase 5)
 - v0.1.0 tag + GitHub Release happen AFTER impl/test/security reviews pass
   (release tags reviewed code); plan criterion partially ticked, release
