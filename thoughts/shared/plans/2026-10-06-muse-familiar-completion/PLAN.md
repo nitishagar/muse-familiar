@@ -390,8 +390,9 @@ corrected (out-of-repo file, this session).
   length 1; landing still HTTP 200.
   ✓ 45 passed, 1 skipped · SECRETS GATE: clean · topics [ai arduino
   desk-pet iot led-matrix muse muse-gadget qualcomm zephyr] · homepage
-  https://nitishagar.github.io/muse-familiar/ · [release: tagged AFTER
-  reviews pass — sequencing refinement, recorded in ledger]
+  https://nitishagar.github.io/muse-familiar/ · ✓ v0.1.0 tagged + released
+  (post-review, CI green on e33aac2; releases API: v0.1.0 — the Familiar,
+  draft:false; landing HTTP 200; git log --grep Co-Authored-By: 0)
 - [ ] Manual (board, user-visible): `sudo python3
   muse_integration/install.py` → service restarts, `musegadget info`
   unchanged, executor contains sentinel import; `--remove` round-trips.

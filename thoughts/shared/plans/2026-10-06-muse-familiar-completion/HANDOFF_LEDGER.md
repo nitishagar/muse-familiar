@@ -73,3 +73,5 @@ in-place, resume unavailable). Start HEAD: 19e3234.
   whitespace path guard, LAN-cleartext note, trust-boundary doc —
   re-proven against the verbatim real-SDK executor oracle + 50 passed.
 - Remaining: tag v0.1.0 + GitHub Release (this commit), then user gates.
+- DONE: CI success e33aac2 · v0.1.0 + release published · landing 200
+  · 0 co-author trailers · loop CLOSED 2026-10-06.
