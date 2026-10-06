@@ -83,8 +83,15 @@ class Narrator:
     def send(self, text: str) -> None:
         if self._muse_ready():
             import subprocess
+            argv = [self.MUSEGADGET, "send-user-msg"]
+            # Optional side chat: set MUSE_SESSION_ID to keep narrations in
+            # their own Muse chat (the SDK's pebble-bridge pattern).
+            session = os.environ.get("MUSE_SESSION_ID")
+            if session:
+                argv += ["--session-id", session]
+            argv.append(text)
             proc = subprocess.run(
-                [self.MUSEGADGET, "send-user-msg", text],
+                argv,
                 capture_output=True, text=True, timeout=10)  # short: must never stall the heartbeat
             if proc.returncode == 0:
                 return

@@ -50,6 +50,8 @@ scripts/install.sh
 curl -X POST localhost:8123/poke \
      -H "X-Familiar-Key: $(cat ~/.config/familiar/key)" \
      -d '{"kind":"ci_green"}'
+#    or, without curl:  python3 -m familiar.cli feed ci_green
+#    health check:      python3 -m familiar.cli status
 ```
 
 Webhook kinds → moods: `ci_green`/`deploy_ok`/`merge` → **happy**;

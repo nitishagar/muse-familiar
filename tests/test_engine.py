@@ -385,3 +385,51 @@ def test_engine_events_heartbeat_and_hot(tmp_path, monkeypatch):
     hot.stop = True
     hot.run()                                       # graceful exit clears
     assert client.clears == 1
+
+
+# ------------------------------------------------------------- narrator ----
+
+
+class _Recorder:
+    def __init__(self):
+        self.calls = []
+
+    def __call__(self, argv, **kwargs):
+        self.calls.append(argv)
+
+        class P:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+        return P()
+
+
+def test_narrator_session_id_env_adds_flag(monkeypatch, tmp_path):
+    import subprocess
+    from familiar.engine import Narrator
+    n = Narrator(path=tmp_path / "narration.jsonl")
+    monkeypatch.setattr(Narrator, "_muse_ready", lambda self: True)
+    rec = _Recorder()
+    monkeypatch.setattr(subprocess, "run", rec)
+
+    monkeypatch.setenv("MUSE_SESSION_ID", "6f1c2d4e-0b7a-4c3e-9f5d-2a8b1e0c7d93")
+    n.send("hello session")
+    assert rec.calls[-1][1:] == ["send-user-msg", "--session-id",
+                                 "6f1c2d4e-0b7a-4c3e-9f5d-2a8b1e0c7d93",
+                                 "hello session"]
+
+    monkeypatch.delenv("MUSE_SESSION_ID")
+    n.send("hello main")
+    assert rec.calls[-1][1:] == ["send-user-msg", "hello main"]
+
+
+def test_narrator_falls_back_to_file_when_muse_unavailable(monkeypatch, tmp_path):
+    from familiar.engine import Narrator
+    import json as _json
+    path = tmp_path / "narration.jsonl"
+    n = Narrator(path=path)
+    monkeypatch.setattr(Narrator, "_muse_ready", lambda self: False)
+    n.send("file mode line")
+    lines = path.read_text().splitlines()
+    assert len(lines) == 1
+    assert _json.loads(lines[0])["text"] == "file mode line"

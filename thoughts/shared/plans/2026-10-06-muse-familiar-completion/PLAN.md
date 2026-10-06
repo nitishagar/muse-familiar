@@ -330,12 +330,15 @@ MUSEGADGET/sock inputs at engine.py:77-81) so send() is reached — for
 set/unset session id.
 
 ### Success Criteria
-- [ ] Local: `pytest tests/test_cli.py -q` → all pass; fault injection:
+- [x] Local: `pytest tests/test_cli.py -q` → all pass; fault injection:
   wrong key → process exit 2 (not traceback), bad kind → exit 3 ·
   localizes to: CLI client layer.
-- [ ] Local: `pytest tests/test_engine.py -q -k narrator` → argv carries
+  ✓ 7 passed (test_cli.py) incl. wrong-key→2, bad-kind→3, engine-down→2
+- [x] Local: `pytest tests/test_engine.py -q -k narrator` → argv carries
   `--session-id` iff env set · localizes to: Narrator.
-- [ ] End-to-end: full suite ≥34 passed, ≤2 skipped; gate clean.
+  ✓ 2 passed
+- [x] End-to-end: full suite ≥34 passed, ≤2 skipped; gate clean.
+  ✓ 41 passed, 1 skipped in 7.21s · SECRETS GATE: clean
 - [ ] Manual (board): `familiar status` reports healthy; `familiar feed
   ci_green` makes the creature hop.
 

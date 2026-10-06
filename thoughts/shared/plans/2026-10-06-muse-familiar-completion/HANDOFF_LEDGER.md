@@ -26,6 +26,12 @@ in-place, resume unavailable). Start HEAD: 19e3234.
   110ee29/2cc19c3 (banded layout, numbered headers) — plan written against
   current HEAD, but implementer must read the CURRENT make_landing.py.
 
+## Hypotheses (phase 4)
+- test_status_healthy fail: H=status over-weighted unit state (NUC systemd
+  says inactive for absent user unit) → rc 2 on a healthy dev engine.
+  Check: assertion rc==2 + code path review. CONFIRMED — fixed cli.py
+  (exit 2 now driven by /health only; unit state is context + hint).
+
 ## Open
 - Board manual gates (installer run, muse install.py run, familiar
   status/feed live) deferred to user per plan.
