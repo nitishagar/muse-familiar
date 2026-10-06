@@ -15,7 +15,7 @@ curious · `hot` → sleepy. Unknown kinds are ignored.
 
 | File | For | Notes |
 |---|---|---|
-| `github-action.yml` | GitHub Actions | Composite-action step; `continue-on-error` because the webhook rate-limits at 12 req/min per source — a pet must never fail your CI. Needs repo secrets `FAMILIAR_URL` + `FAMILIAR_KEY`; engine running with `--lan`. |
+| `github-action.yml` | GitHub Actions | Inline workflow step (composite actions can't read `secrets`/`job.status`, so copy the step into your job); `continue-on-error` because the webhook rate-limits at 12 req/min per source — a pet must never fail your CI. Needs repo secrets `FAMILIAR_URL` + `FAMILIAR_KEY`; engine running with `--lan`. |
 | `home-assistant.yaml` | Home Assistant | `rest_command` + two example automations. Key goes in `secrets.yaml` (`familiar_key`). |
 
 LAN mode: the webhook binds loopback by default; start the engine with

@@ -164,3 +164,24 @@ def test_crash_before_replace_leaves_original(tmp_path, monkeypatch):
         assert "familiar.status" not in module.COMMAND_SPECS
     finally:
         sys.path.remove(str(executor.parent.parent))
+
+
+def test_verification_failure_restores_original(tmp_path):
+    # A python that cannot import muse_integration (clean env, cwd=/) makes
+    # the hook degrade to no-registration: install.py must refuse AND put
+    # the original back. (In-process run_install cannot reproduce this —
+    # the repo's editable install resolves the import under the venv python.)
+    import subprocess
+    venv, executor = make_stub_venv(tmp_path)
+    original = executor.read_bytes()
+    r = subprocess.run(
+        ["/usr/bin/env", "python3",
+         str(REPO / "muse_integration" / "install.py"),
+         "--venv", str(venv), "--repo", "/nonexistent-repo", "--no-restart"],
+        capture_output=True, text=True, cwd="/",
+        env={"HOME": "/tmp", "PATH": "/usr/local/bin:/usr/bin:/bin"})
+    assert r.returncode != 0
+    assert "backup restored" in (r.stdout + r.stderr)
+    assert executor.read_bytes() == original
+    assert sorted(venv.glob("**/executor.py.familiar-bak-*"))  # kept for audit
+    assert sorted(venv.glob("**/*familiar-tmp*")) == []

@@ -81,8 +81,9 @@ def _recent_events(n: int) -> list[str]:
 
     path = engine_mod.EVENTS_FILE
     try:
-        # Brief SHARED lock: the engine appends under the same discipline,
-        # so we never read a half-written line.
+        # LOCK_SH pairs with the engine's lifetime lock and the uploader's
+        # exclusive flash; event lines are single O_APPEND writes, so a
+        # concurrent reader sees whole lines.
         lock_fd = open(engine_mod.LOCK_PATH, "a+")
         try:
             fcntl.flock(lock_fd, fcntl.LOCK_SH)

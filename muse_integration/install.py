@@ -49,7 +49,7 @@ try:
     import sys as _sys
     _sys.path.insert(0, {repo!r})
     from muse_integration.familiar_specs import register as _familiar_register
-    _familiar_register(globals())
+    _familiar_register(globals(), {repo!r})
 except Exception:  # the gadget service must survive a missing repo
     import logging as _logging
     _logging.getLogger(__name__).exception("familiar hook failed")
@@ -78,7 +78,8 @@ def verify_registration(venv: str, executor: str) -> list[str]:
         argv = [venv_python, "-c", code]
     else:
         argv = [sys.executable, "-c", code]
-    proc = subprocess.run(argv, capture_output=True, text=True, timeout=120)
+    proc = subprocess.run(argv, capture_output=True, text=True, timeout=120,
+                          cwd="/")   # cwd-neutral: only the inserted paths resolve
     if proc.returncode != 0:
         raise RuntimeError(f"verification import failed: "
                            f"{proc.stderr.strip()[:400]}")

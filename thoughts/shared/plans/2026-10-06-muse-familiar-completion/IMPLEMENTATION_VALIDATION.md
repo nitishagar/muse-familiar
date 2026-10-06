@@ -205,3 +205,204 @@ is unplanned-but-good.)
   restore after each failure verified byte-exact against the SDK original.
 
 VERDICT: MAJOR-FAIL
+
+## Round 2 (fresh reviewer)
+
+Diff under review: `git diff 19e3234..HEAD` (fix commit 1f66d83 on top of the
+round-1 range). Fresh read of every touched file, PLAN.md (incl.
+Amendments), IMPLICIT_SPEC.md, and the round-1 findings. Every item
+defaulted FAIL until earned. Oracles executed by this reviewer (not taken
+from the ledger): a verbatim copy of the real SDK executor
+(`~/tmp-research/muse-gadget-sdk/linux/src/musegadget/executor.py`, sha256
+b3795fc4… + `__init__.py`) in a stub venv layout
+(`lib/python3.12/site-packages/musegadget/`), plus a simulated
+already-installed install.sh state under a fake `$HOME` traced with
+`bash -x`.
+
+### Round-1 finding dispositions
+
+**I1 — FIXED, proven against the real executor.**
+- `install.py:64-85 verify_registration` now imports the patched executor
+  the way the service does — as a package — via `python -c` with
+  site-packages (dirname×2 of the executor, `install.py:71`) inserted on
+  sys.path, preferring `<venv>/bin/python` when present (`install.py:76-80`).
+  Package-context import supplies both things fresh-file exec could not:
+  `musegadget.__version__` at executor.py:36 and
+  `sys.modules['musegadget.executor']` for the `@dataclass(frozen=True)`
+  Account (executor.py:101).
+- `familiar_specs.py:84/91/100` pass `timeout_ms` positionally (`None`)
+  into `system_run`, matching the real SDK's no-default signature
+  (executor.py:160); the wrapper also forwards `timeout_ms` to
+  `original_run` (`familiar_specs.py:110-113`).
+- The stub executor mirrors all three real traits
+  (`tests/test_muse_install.py:18` module-level package import, `:21-26`
+  frozen dataclass, `:41-44` positional `system_run` without default) —
+  the unit oracle is now a faithful miniature.
+- **Executed oracle**: `python3 muse_integration/install.py --venv <stub>
+  --repo <repo abs> --no-restart` → `verified registration: familiar.feed
+  familiar.show familiar.status`, rc=0. Dispatch on the real `Executor`
+  (instance-stubbed `system_run`): `familiar.show happy` ok with
+  `timeout_ms=None` passed positionally; bad mood / `x; reboot` kind
+  rejected by allowlist before any command is built; `device.health`
+  passthrough intact. `--remove` → rc=0, executor sha restored to
+  b3795fc4…, `cmp` byte-identical to the pristine SDK copy, zero
+  backup/tmp residue. Re-install → second run no-ops ("hook already
+  present"). Repo-gone-at-service-time: rewiring the hook's path to a
+  nonexistent dir and importing → module loads fine, familiar specs
+  absent, hook logs — degradation as designed.
+
+**I2 — FIXED.** `bash scripts/install.sh --check --repo
+~/repos/learn/muse-familiar` → exit 0 and prints the exact drop-in body
+(`scripts/install.sh:100-103`) including the literal reset lines
+`ExecStartPre=`, `Environment=`, `ExecStart=`, `ExecStopPost=`; zero side
+effects (no drop-in/link/key created). Auto-detect mode (no `--repo`)
+also exit 0 with the same content.
+
+**I3 — FIXED.** `examples/github-action.yml` is now an inline workflow
+step (legal `secrets.*`/`job.status` contexts — valid only in workflow
+files, which this now is), with a header explaining why a composite
+action would break (`examples/github-action.yml:1-4`); the misleading
+`uses: ./.github/actions/familiar-poke` wiring comment is gone.
+
+**I4 — PARTIALLY FIXED; the restart half is still broken (see Important
+finding R2-1).** The drop-in rewrite is now change-gated
+(`scripts/install.sh:74-76` content compare, `:115-121` writes only when
+changed, else "drop-in already current") — that half is genuinely fixed.
+The restart is not: `install.sh:85` still folds `DROPIN_NEEDED` into
+`LINK_NOW` unconditionally, and `RESTART` keys on `LINK_NOW`
+(`install.sh:94`).
+
+### Checklist verdicts (re-derived on the full diff)
+
+1. **Plan conformance** — PASS except R2-1: all five phases' mechanisms
+   now exist and work; Phase 2's `--check` criterion is satisfied as
+   written (exact drop-in + reset lines, exit 0, both invocation modes —
+   executed); Amendment 1 remains an honest, veto-flagged disclosure.
+   Round-1 fixes were recorded in ledger+commit, correctly (no PLAN.md
+   amendment needed for I1/I2/I3 since the implementation moved toward
+   the plan, not away). The restart deviation of R2-1 remains undisclosed
+   in Amendments (carried from round 1).
+2. **Spec invariants 1-13** — PASS, re-derived: (1) gate executed —
+   clean; new file types `.yml/.md/.sh` are all in secrets_gate CODE_EXTS
+   (tools/secrets_gate.py:28). (2) no `firmware/` path in the diff; sketch
+   only read by `test_sketch_clamps_present`. (3) `familiar/webhook.py`
+   absent from diff; `feed` reuses `/poke` (401/429 → exit 2, tested).
+   (4) router-socket grep test green. (5) no new long-lived writer; CLI
+   status is a short LOCK_SH reader (N1 comment issue persists — nit).
+   (6/7) bridge and webhook-thread paths untouched. (8) landing parity
+   executed — in sync; `--check` is an in-memory byte compare.
+   (9) contract test executed against the real SDK — 1 passed; hook
+   carries zero spec text (import + `register(globals())`,
+   `install.py:45-56`). (10) runtime stdlib-only; pyyaml dev/CI-only.
+   (11) banned-strings test green; `$KEY`/`sdk-linux/`/"after installing
+   the unit" gone — but see nit R2-N2 (examples/README misdescribes the
+   GH artifact). (12) co-author grep clean here and in CI + local mirror
+   test. (13) backup-first (`install.py:160-161`), compile-before-replace
+   (`:166`), atomic `os.replace` (`:169`), verification-failure restore —
+   executed from a neutral cwd: rc=1, byte-identical restore, no temp
+   residue; `--remove` oldest-wins proven against the real executor.
+3. **Failure/concurrency** — PASS: temp cleanup on BaseException paths
+   (`install.py:170-177`), `--remove` with hook-but-no-backups refuses
+   (`:118-120`), crash-before-replace covered by unit test, same-second
+   `--force` counter-suffixed backups (`:154-159`), CLI timeouts bounded
+   (2 s health / 5 s feed / 5 s systemctl). One FAIL-adjacent item: R2-1
+   (restart on no-op re-run at non-default repos).
+4. **Anti-patterns** — PASS. `register(globals())` remains justified and
+   documented (`familiar_specs.py:64-76`); HA-tag-aware SafeLoader
+   subclass is tight; no knobs/layers/DI.
+5. **Test integrity** — PASS. Zero deleted lines in `tests/` across the
+   whole diff (`git diff 19e3234..HEAD -- tests/` has no `-` hunks). The
+   fix commit's edit to `test_example_yaml_parses` adapts a test added
+   within this same diff range (phase 3), and is strictly stronger (walks
+   to the Poke step, asserts both `continue-on-error` and the secrets
+   expression). The stub upgrade strengthens, not weakens.
+6. **Common defects** — PASS: feed kind validated by dict membership;
+   YAML parsed with safe loaders; swallowed exceptions scoped and
+   commented; `--repo` missing-value now guarded (round-1 N4 half).
+7. **Convention fit** — PASS: module docstrings with exit-code contract
+   (`familiar/cli.py:7-10`), lazy imports, one-file stdlib installer.
+
+CI sanity: `.github/workflows/ci.yml` parses (triggers push[main]/PR;
+steps checkout(fetch-depth 0) → setup-uv → tests(+pyyaml) → gate →
+parity → co-author; `permissions: contents: read`); the example yml now
+parses as a legal workflow file with a real job/steps structure.
+
+### Important findings
+
+**R2-1 — I4's restart half is NOT fixed, despite the fix commit claiming
+"writes/restarts only on change" and the ledger recording
+"drop-in+restart only on change. CONFIRMED by re-run output".**
+`scripts/install.sh:85` computes `LINK_NOW=1` whenever `DROPIN_NEEDED=1`
+— unconditionally for any repo outside `~/muse-familiar`, regardless of
+link/key/drop-in state — and `RESTART` keys on `LINK_NOW`
+(`scripts/install.sh:94`), so the execute path restarts a healthy engine
+on every re-run (`install.sh:136-138`) and prints the false message
+"restarted familiar-engine (config changed)". Executed proof: simulated
+fully-installed no-op state under a fake `$HOME` (drop-in byte-equal to
+`dropin_content`, unit link → repo unit, key present) — `bash -x` trace
+shows `DROPIN_CHANGED=0`, `KEY_CREATED=0`, yet `LINK_NOW=1` →
+`RESTART=1`, and `--check` plans "daemon-reload; enable --now; restart".
+(The redundant clause is also the only reason: the other two `LINK_NOW`
+conditions were false; `readlink` comparisons never even evaluated.) The
+default-location flow is correctly change-gated; the plan's "restart
+only when linked target or key changed" is still violated for
+non-default clones, and the code's own comment at `install.sh:91-92`
+states an intent the code does not implement. Fix is one line: drop the
+`[ "$DROPIN_NEEDED" = 1 ] ||` clause from the `LINK_NOW` condition (the
+drop-in case is already covered by `DROPIN_CHANGED`; a changed link
+target is covered by the readlink compare).
+
+### Nits (6)
+
+- R2-N1 (carried N1): `familiar/cli.py:84-85` comment claims "the engine
+  appends under the same discipline" — engine `_log_event` takes no
+  flock; safety rests on O_APPEND single-write atomicity. Comment
+  misstates the mechanism; behavior is fine.
+- R2-N2 (new): `examples/README.md:18` still calls `github-action.yml` a
+  "Composite-action step" — stale after the I3 fix; the artifact's own
+  header now says the opposite ("inline step (not a composite action)").
+- R2-N3 (new): the install.py verification oracle is cwd-sensitive:
+  `python -c` puts `''` (cwd) on sys.path, so running the documented
+  `cd <repo>; sudo python3 … install.py --repo <typo>` verifies
+  successfully by importing `muse_integration` from the cwd even though
+  the hook's embedded path is broken — observed (bogus `--repo` passed
+  verification from the repo cwd, failed correctly from `/tmp`). The
+  service would then degrade to familiar-absent (guarded, logged), not a
+  brick; the default auto-`--repo` cannot hit it. An `-I`/`-P` flag or
+  `cwd=/` on the subprocess would close it.
+- R2-N4 (carried N4 half): `units/familiar-engine.service:9` hardcodes
+  `%h/.local/bin/uv` while install.sh accepts uv anywhere on PATH — a
+  system-wide uv passes `--check` but yields a failing unit (the `--repo`
+  value-guard half of N4 is fixed).
+- R2-N5 (carried N5): `--repo` steers only the hook's import path;
+  `register()`'s embedded commands still resolve `~/muse-familiar` at
+  load time (`familiar_specs.py:77-79`).
+- R2-N6 (new, cosmetic): `--check`'s ACTIONS summary always says
+  "write $DROPIN …" for non-default repos even when the drop-in is
+  already current (the execute path correctly says "drop-in already
+  current").
+
+(Not counted: `__pycache__` beside the executor from the package-context
+verification import — the service creates it anyway; COMMANDS.md's UUID
+placeholder with an ellipsis; round-1 N2/N3 refinements — CI's
+`make_landing.py --check` variant and the hook's log-not-pass guard —
+remain unrecorded in PLAN Amendments.)
+
+### Verification evidence (executed during this review)
+
+- Real-SDK-executor oracle (verbatim copy in stub venv): install →
+  verified registration, rc=0; dispatch allowlists + positional
+  `timeout_ms` + `device.health` passthrough; `--remove` → byte-identical
+  restore (sha256 + cmp vs pristine), zero residue; idempotent no-op;
+  repo-gone degradation import.
+- `bash scripts/install.sh --check --repo …` and auto-detect → exit 0,
+  exact drop-in with reset lines, zero side effects; `--repo` without a
+  value → BLOCKED, exit 1; fake-HOME no-op state + `bash -x` →
+  DROPIN_CHANGED=0/KEY_CREATED=0 yet RESTART=1 (R2-1).
+- `uv run --with pytest --with msgpack --with pyyaml python -m pytest -q`
+  → 45 passed, 1 skipped. `python3 tools/secrets_gate.py` → clean.
+  `python3 tools/make_landing.py --check` → in sync.
+  `MUSE_SDK_LINUX_DIR=… pytest tests/test_contract.py -q` → 1 passed.
+  ci.yml + both example YAMLs parse; co-author grep clean.
+
+VERDICT: MINOR-FAIL

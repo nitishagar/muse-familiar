@@ -73,8 +73,10 @@ else
     DROPIN_NEEDED=1
     if [ ! -f "$DROPIN" ] || [ "$(dropin_content)" != "$(cat "$DROPIN")" ]; then
         DROPIN_CHANGED=1
+        ACTIONS+=("write $DROPIN resetting+re-setting ExecStartPre/Environment/ExecStart/ExecStopPost to $REPO")
+    else
+        ACTIONS+=("drop-in already current: $DROPIN")
     fi
-    ACTIONS+=("write $DROPIN resetting+re-setting ExecStartPre/Environment/ExecStart/ExecStopPost to $REPO")
 fi
 KEY_CREATED=0
 if [ ! -f "$KEY_FILE" ]; then
@@ -82,10 +84,10 @@ if [ ! -f "$KEY_FILE" ]; then
     ACTIONS+=("generate $KEY_FILE (24 random bytes, mode 0600)")
 fi
 LINK_NOW=0
-if [ "$DROPIN_NEEDED" = 1 ] || [ ! -e "$UNIT_LINK" ] || \
+if [ ! -e "$UNIT_LINK" ] || \
    [ "$(readlink -f "$UNIT_LINK" 2>/dev/null || true)" != "$(readlink -f "$UNIT_SRC")" ]; then
     LINK_NOW=1
-    [ "$DROPIN_NEEDED" = 1 ] || ACTIONS+=("systemctl --user link $UNIT_SRC")
+    ACTIONS+=("systemctl --user link $UNIT_SRC")
 fi
 
 # Restart only when something actually changed (a no-op re-run must not
