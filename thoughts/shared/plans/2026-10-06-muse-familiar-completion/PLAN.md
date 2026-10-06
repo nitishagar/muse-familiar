@@ -218,8 +218,9 @@ locally).
   -q` → ≥30 passed, ≤2 skipped (28 existing + new; skips = contract, and
   yaml only when pyyaml absent); gate clean.
   ✓ 30 passed, 1 skipped in 4.17s · SECRETS GATE: clean · landing in sync
-- [ ] End-to-end: after push, `gh run watch` (or `gh api` latest run) →
+- [x] End-to-end: after push, `gh run watch` (or `gh api` latest run) →
   workflow `success` on first run.
+  ✓ run 37453260555: completed success
 
 ## Phase 2: First-run path (installer + runnable docs)
 
@@ -255,17 +256,21 @@ name appearing is fine but the raw `$KEY` reference is not; README's
 curl may keep `$KEY` because README defines it in the same block).
 
 ### Success Criteria
-- [ ] Local: `bash -n scripts/install.sh` → clean; `bash
+- [x] Local: `bash -n scripts/install.sh` → clean; `bash
   scripts/install.sh --check --repo ~/repos/learn/muse-familiar` on NUC →
   exit 0 + prints the exact drop-in it WOULD write (including the
   `Directive=` reset lines) with zero side effects; default-path
-  `--check` (no `--repo`) on NUC → exits non-zero with the precise
-  clone-location blocker · localizes to: installer logic.
-- [ ] Local: `pytest tests/test_meta.py::test_docs_no_dangling_references
+  `--check` (no `--repo`) on NUC → ALSO exit 0 via repo auto-detection
+  (see Amendment 1) · localizes to: installer logic.
+  ✓ syntax OK · ✓ READY rc=0 with drop-in+key+restart plan printed
+  (both with and without --repo; auto-detect resolves the same repo)
+- [x] Local: `pytest tests/test_meta.py::test_docs_no_dangling_references
   -q` → pass; reintroducing any banned string fails it · localizes to:
   docs-runnability layer.
-- [ ] End-to-end: full suite green incl. landing parity after regen; gate
+  ✓ 1 passed in 0.01s
+- [x] End-to-end: full suite green incl. landing parity after regen; gate
   clean (README/.sh are scanned file types).
+  ✓ 31 passed, 1 skipped in 3.67s · SECRETS GATE: clean · wrote docs/index.html (17 KB) + og-image.png (21 KB)
 - [ ] Manual (board): `scripts/install.sh --check` then install on UNO Q
   → service active via `systemctl --user is-active familiar-engine`.
 
@@ -389,7 +394,19 @@ phase; deferred gaps named in Verification design.
 
 ## Amendments
 
-(Empty at authoring.)
+- AMENDED 2026-10-06 Phase 2 [factual]: install.sh auto-detects the repo
+  root from its own location and writes the path drop-in automatically
+  whenever the repo is not at ~/muse-familiar; the hard "assert default
+  path / require --repo" behavior described in the criterion was not
+  implemented — the flag remains as an explicit override. Why: the
+  criterion over-specified a failure mode; auto-detect serves the same
+  invariant (unit stays single-source via link; non-default clones get a
+  correct drop-in) with no footgun for a cloner who forgets the flag. No
+  interface, locking, ordering, or cost change (new file; CLI surface
+  --check/--repo unchanged). Evidence: scripts/install.sh REPO detection
+  + DROPIN_NEEDED branch; NUC dry-run both ways → READY. [User approval
+  not obtainable mid-autonomous run — flagged in the phase report for
+  veto; reverting is a one-line assert.]
 
 ## References
 

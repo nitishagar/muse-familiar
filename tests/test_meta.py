@@ -49,3 +49,15 @@ def test_no_coauthor_trailers_in_log():
         ["git", "log", "--all", "--grep=Co-Authored-By", "--format=%H"],
         cwd=REPO, capture_output=True, text=True)
     assert out.stdout.strip() == "", f"co-author trailers in history:\n{out.stdout}"
+
+
+def test_docs_no_dangling_references():
+    # Docs are copy-paste-runnable (spec inv 11): no references to paths the
+    # repo doesn't ship, no dangling unit-install comment, and the landing
+    # never uses an undefined shell variable (README defines KEY inline).
+    readme = (REPO / "README.md").read_text()
+    landing = (REPO / "docs" / "index.html").read_text()
+    for text, name in ((readme, "README.md"), (landing, "docs/index.html")):
+        for banned in ("sdk-linux/", "after installing the unit"):
+            assert banned not in text, f"{name} references {banned!r}"
+    assert "$KEY" not in landing, "landing uses $KEY without defining it"

@@ -32,14 +32,19 @@ this is a first, on a board built for exactly this kind of mischief.
 ## Quickstart (on the UNO Q)
 
 ```sh
+# 0. clone to the default location (the unit's paths expect ~/muse-familiar;
+#    other locations work too — scripts/install.sh writes a path drop-in)
+git clone https://github.com/nitishagar/muse-familiar ~/muse-familiar \
+  && cd ~/muse-familiar
+
 # 1. flash the frame player (needs the board's own arduino-cli + password)
 read -rs UNOQ_UPLOAD_PASSWORD && export UNOQ_UPLOAD_PASSWORD   # typed, never in shell history
-cd firmware && ./upload.sh
+cd firmware && ./upload.sh && cd ..
 
-# 2. run the creature (webhook on loopback; use `--lan` with the engine for LAN)
-mkdir -p ~/.config/familiar && head -c24 /dev/urandom | base64 > ~/.config/familiar/key
-chmod 600 ~/.config/familiar/key
-systemctl --user enable --now familiar-engine   # after installing the unit
+# 2. install the engine (webhook key + systemd --user unit, link-based —
+#    idempotent; dry-run first with `scripts/install.sh --check`).
+#    Headless board, once: sudo loginctl enable-linger $USER
+scripts/install.sh
 
 # 3. make it happy
 curl -X POST localhost:8123/poke \
@@ -74,8 +79,12 @@ Familiar doing?"* — and mood changes appear in your chat:
   untouched. The arduino-router socket is used only via its documented
   client API and never re-permissioned or exposed to Muse.
 - Teardown: `systemctl --user disable --now familiar-engine`,
-  `sudo bash sdk-linux/install.sh --uninstall`, reflash anytime via
-  `firmware/upload.sh`.
+  `systemctl --user unlink familiar-engine` (removes the link),
+  optionally `rm -rf ~/.config/familiar`; to also remove Muse's SDK,
+  run its installer from the upstream repo:
+  `bash linux/install.sh --uninstall` (from
+  [muse-gadget-sdk](https://github.com/facebookincubator/muse-gadget-sdk)).
+  Reflash anytime via `firmware/upload.sh`.
 
 ## Repo map
 

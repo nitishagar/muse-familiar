@@ -137,11 +137,11 @@ footer{padding:32px 0 56px;color:#5b6980;font-size:13px;text-align:center}
 <section class="band alt">
 <div class="wrap">
   <div class="sec-head"><span class="sec-n">02</span><h2>Make it yours</h2></div>
-  <div class="term"><div class="term-bar"><span class="dots"><i></i><i></i><i></i></span><span>uno-q — quickstart</span></div><pre>git clone https://github.com/nitishagar/muse-familiar &amp;&amp; cd muse-familiar
+  <div class="term"><div class="term-bar"><span class="dots"><i></i><i></i><i></i></span><span>uno-q — quickstart</span></div><pre>git clone https://github.com/nitishagar/muse-familiar ~/muse-familiar &amp;&amp; cd ~/muse-familiar
 read -rs UNOQ_UPLOAD_PASSWORD &amp;&amp; export UNOQ_UPLOAD_PASSWORD
-cd firmware &amp;&amp; ./upload.sh          # flash the frame player
-# ... then the engine + a one-line webhook:
-curl -X POST localhost:8123/poke -H "X-Familiar-Key: $KEY" -d '{"kind":"ci_green"}'</pre></div>
+cd firmware &amp;&amp; ./upload.sh &amp;&amp; cd ..          # flash the frame player
+scripts/install.sh                        # webhook key + engine service
+curl -X POST localhost:8123/poke -H "X-Familiar-Key: $(cat ~/.config/familiar/key)" -d '{"kind":"ci_green"}'</pre></div>
   <div class="kinds">
     <span class="kind"><b>ci_green</b> / deploy_ok / merge → happy</span>
     <span class="kind"><b>ci_red</b> / deploy_fail → sad</span>
