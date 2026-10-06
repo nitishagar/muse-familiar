@@ -405,4 +405,78 @@ remain unrecorded in PLAN Amendments.)
   `MUSE_SDK_LINUX_DIR=… pytest tests/test_contract.py -q` → 1 passed.
   ci.yml + both example YAMLs parse; co-author grep clean.
 
-VERDICT: MINOR-FAIL
+VERDICT: MINOR-FAIL (superseded — all Round-2 findings re-verified fixed at 2605fad; see Round 3)
+
+## Round 3 (verification of fix commit 2605fad)
+
+Same fresh-reviewer method, scoped to `git diff HEAD~1..2605fad` plus
+re-execution of every round-2 oracle against the changed code. The fix
+commit also landed two extra test gaps I had not demanded (feed 429→exit 2,
+status events tail, verification-failure restore in a clean interpreter) —
+additive, checked below.
+
+### R2-1 — FIXED, verified two ways
+- Code: `scripts/install.sh:87-90` — `LINK_NOW` is now driven only by
+  link-missing/readlink-mismatch (`DROPIN_NEEDED` clause removed);
+  `RESTART` still keys on `LINK_NOW`/`KEY_CREATED`/`DROPIN_CHANGED`
+  (`install.sh:96`), each of which is now a genuine change signal.
+- Executed (my fake-`$HOME` no-op scenario, not just the harness):
+  materialized drop-in-byte-equal + unit link → repo unit + key present →
+  `bash -x` trace shows `DROPIN_CHANGED=0`, `KEY_CREATED=0`,
+  `LINK_NOW=0`, `RESTART=0`; `--check` prints "drop-in already current"
+  and "enable --now … (no restart needed)", exit 0. Fresh non-default
+  `--check` still prints the exact drop-in incl. all four `Directive=`
+  reset lines, exit 0 (I2 regression-checked).
+- Pinned by `tests/test_install_sh.py::test_check_noop_rerun_needs_no_restart`
+  — materializes the script's own printed state into a fake HOME (cannot
+  drift from `dropin_content`) and asserts "already current" +
+  "no restart needed" + no side effects; plus
+  `test_check_first_run_prints_exact_dropin` asserting the reset-then-set
+  pattern per directive. Both green.
+
+### Nits — all five claimed fixes verified
+- R2-N2: `examples/README.md:18` now says "Inline workflow step
+  (composite actions can't read `secrets`/`job.status` …)" — matches the
+  artifact's header.
+- R2-N6: `--check` ACTIONS line now prints "drop-in already current:
+  …" when unchanged (`scripts/install.sh:76-78`) — seen in the no-op run.
+- R2-N1: `familiar/cli.py:84-86` comment restated — "LOCK_SH pairs with
+  the engine's lifetime lock and the uploader's exclusive flash; event
+  lines are single O_APPEND writes" — accurate against engine.py:57
+  (`_log_event` takes no flock), engine.py:157 (lifetime LOCK_SH).
+- R2-N3: `verify_registration` runs its subprocess with `cwd="/"`
+  (`install.py:81-82`). Executed: bogus `--repo` FROM THE REPO CWDIR
+  (round-2's false-pass scenario) now correctly fails verification
+  ("familiar.* specs missing — backup restored", rc=1) with byte-identical
+  restore and no temp residue.
+- R2-N5: the hook now passes the resolved repo — `_familiar_register(
+  globals(), {repo!r})` (`install.py:52`) — so `--repo` steers the built
+  command paths too. Executed against the verbatim real-SDK-executor
+  copy: fresh install → verified registration; dispatch on the real
+  `Executor` builds `familiar.status`/`familiar.show` commands embedding
+  the `--repo` path; bad-mood allowlist intact; `--remove` →
+  `cmp`-byte-identical restore, zero backup/tmp residue.
+
+### Re-derived on the full post-fix diff
+- Test integrity: `tests/` changes at 2605fad are purely additive — new
+  file `tests/test_install_sh.py` (2 tests), plus
+  `test_feed_rate_limited_is_exit_2`, `test_status_tails_events_file`,
+  `test_verification_failure_restores_original`; zero deleted/modified
+  assertions anywhere in `tests/` across 19e3234..2605fad.
+- Suite: `uv run --with pytest --with msgpack --with pyyaml python -m
+  pytest -q` → 50 passed, 1 skipped. `python3 tools/secrets_gate.py` →
+  clean. `make_landing.py --check` → in sync. Contract test vs the real
+  SDK (`MUSE_SDK_LINUX_DIR=…`) → 1 passed. `bash -n scripts/install.sh`
+  → OK. Working tree clean; no oracle residue.
+- Remaining known-and-accepted nits (unchanged, none claimed fixed):
+  `units/familiar-engine.service:9` hardcodes `%h/.local/bin/uv` while
+  install.sh accepts uv anywhere on PATH (system-wide uv passes check,
+  unit fails — default installer flow uses ~/.local/bin); round-1 N2/N3
+  refinements (CI's `--check` parity variant; hook logs instead of
+  `except: pass`) still unrecorded in PLAN Amendments; `__pycache__`
+  beside the executor from the package-context verification import
+  (service creates it anyway); COMMANDS.md UUID placeholder. None
+  affect correctness of the promised mechanisms.
+- Board manual gates remain deferred to the user per plan (unchanged).
+
+VERDICT: PASS

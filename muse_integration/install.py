@@ -47,7 +47,7 @@ def hook_source(repo: str) -> str:
 {SENTINEL}
 try:
     import sys as _sys
-    _sys.path.insert(0, {repo!r})
+    _sys.path.append({repo!r})   # append: repo code must not shadow stdlib
     from muse_integration.familiar_specs import register as _familiar_register
     _familiar_register(globals(), {repo!r})
 except Exception:  # the gadget service must survive a missing repo

@@ -20,7 +20,10 @@ curious · `hot` → sleepy. Unknown kinds are ignored.
 
 LAN mode: the webhook binds loopback by default; start the engine with
 `--lan` (the installer's unit uses the default — add a systemd drop-in or
-edit the ExecStart) before pointing anything at the board's IP.
+edit the ExecStart) before pointing anything at the board's IP. Note the
+key then travels as a header over plain HTTP on your LAN — fine for most
+home networks (it only grants mood-pokes, rate-limited); route through
+Tailscale or an HTTPS reverse proxy if that bothers you.
 
 Anything that can POST JSON can feed it — the two files above are just
 the ones we get asked about.

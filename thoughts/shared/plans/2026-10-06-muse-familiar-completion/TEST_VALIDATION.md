@@ -163,7 +163,7 @@ failure; the later read gets full output).
 - N7: release/topics criteria out-of-repo, deferred per HANDOFF_LEDGER —
   correctly not pytest-testable.
 
-## Verdict rationale
+## Verdict rationale (round 1)
 
 The suite is honest and largely earned: strictly additive, real fixtures
 (not mocks) on the CLI and installer seams, byte/exact-argv/queue-delivery
@@ -174,4 +174,76 @@ one whole automatable surface with no automated check backing its
 criterion (F2), and two small pinning gaps (F3, F4). None indicate
 assert-nothing tests or weakened coverage; all are additive follow-ups.
 
-VERDICT: MINOR-FAIL
+VERDICT (round 1): MINOR-FAIL
+
+## Round 2 re-review (commit 2605fad — fixes for F1-F4)
+
+All four findings re-verified by re-running the suite AND re-mutating the
+code under test (scratch copies, deleted afterwards; repo tree clean).
+
+- **F1 CLOSED** — `tests/test_muse_install.py::test_verification_failure_restores_original`
+  runs install.py via `/usr/bin/env python3` with `cwd="/"` and a minimal
+  env (HOME=/tmp, no PYTHONPATH), so the hook's `muse_integration` import
+  genuinely cannot resolve: asserts nonzero exit, "backup restored",
+  byte-identical executor, backup retained for audit, no tmp residue.
+  The clean-interpreter trick is sound — the in-process runner indeed
+  could not reproduce this (uv's editable install resolves the import).
+  **Mutation-verified**: deleting both `shutil.copy2(backup, executor)`
+  restores → test FAILS.
+- **F2 CLOSED** — `tests/test_install_sh.py` (new, 2 tests) drives the
+  REAL `bash scripts/install.sh --check --repo <repo>` under a fake HOME:
+  first run asserts READY + "exact drop-in content" + reset-then-set for
+  all four directives + restart planned; the no-op rerun materializes the
+  printed state (key, exact drop-in content parsed from the indented
+  block, unit symlink) and asserts "already current" + "no restart
+  needed" + nothing touched. This also pins the 2605fad behavior fix
+  (LINK_NOW no longer folds in DROPIN_NEEDED — no-op reruns never bounce
+  the engine). **Mutation-verified**: reintroducing always-restart for
+  non-default repos → no-op-rerun test FAILS.
+- **F3 CLOSED** — `tests/test_cli.py::test_feed_rate_limited_is_exit_2`:
+  13 live feeds, first 12 rc==0, 13th rc==2 with 429/rate-limited in
+  stderr. The fixture's `webhook._STATE["hits"] = {}` reset isolates the
+  process-global rate window without touching production (test_engine's
+  fixture already did the same). **Mutation-verified**: special-casing
+  429 to return 0 → test FAILS.
+- **F4 CLOSED** — `tests/test_cli.py::test_status_tails_events_file`
+  monkeypatches `engine.EVENTS_FILE`/`LOCK_PATH` to tmp, writes 7 JSONL
+  lines, and asserts status surfaces exactly the last 5 (k2-k6 in, k0/k1
+  out) plus the resolved path — the real `_recent_events` LOCK_SH read
+  is exercised (this test deliberately does not stub it).
+  **Mutation-verified**: tail `[-n:]` → head `[:n]` → test FAILS.
+
+Suite re-run by reviewer: **50 passed, 1 skipped in 8.76s** (45+5 new);
+`tests/test_meta.py` without pyyaml → 7 passed, 1 skipped (yaml still
+skips cleanly); `python3 tools/secrets_gate.py` → clean. Tests remain
+strictly additive (no pre-existing test weakened; the `_STATE["hits"]`
+reset lives inside test_cli's own fixture). Implementation changes in
+2605fad are each pinned or justified: install.sh LINK_NOW fix pinned by
+the new no-op test; install.py `register(globals(), repo)` plumbs the
+real repo into the spec commands; verification `cwd="/"` closes a real
+oracle hole (`python -c` puts cwd on sys.path, so running install.py
+from the repo root could mask a bad `--repo` value).
+
+### Residual nits (round 2, non-blocking)
+
+- R1: the `cwd="/"` verification hardening is not directly pinned (the
+  F1 test's own subprocess already runs with cwd=/, so removing `cwd="/"`
+  would not fail it). A variant running install.py with cwd=REPO and a
+  bogus --repo would pin it.
+- R2: the hook's repo-plumbing into register() is not asserted (a dropped
+  `repo` argument would silently fall back to ~/muse-familiar paths in
+  the generated commands) — board-manual territory.
+- R3: test_install_sh requires `uv` on the inherited PATH (the script's
+  own contract; CI's setup-uv provides it).
+- N1-N4, N6 from round 1 remain (all cosmetic/bookkeeping).
+
+## Verdict rationale (final)
+
+Round-1 gaps F1-F4 are each closed by a real, mutation-verified,
+fail-able test against the real artifact (live script, live subprocess,
+live webhook). Coverage now backs every non-Manual criterion in PLAN.md
+Phases 1-5 with an automated check that fails if missed; the suite is
+strictly additive, dependency-gated skips stay clean, gate is clean, and
+CI is green. Remaining items are nits only.
+
+VERDICT: PASS

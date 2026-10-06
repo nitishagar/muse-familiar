@@ -46,6 +46,8 @@ UV_BIN="$(command -v uv || true)"; UV_BIN="${UV_BIN:-$HOME/.local/bin/uv}"
 
 [ -f "$UNIT_SRC" ] || fail "unit template not found: $UNIT_SRC"
 [ -x "$UV_BIN" ]   || fail "uv not found at $UV_BIN (install: https://docs.astral.sh/uv/)"
+case "$REPO$UV_BIN" in *[[:space:]]*)
+    fail "paths with whitespace/newlines would corrupt the generated unit — move the repo or uv";; esac
 
 dropin_content() {
     cat <<EOF

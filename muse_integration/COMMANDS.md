@@ -40,6 +40,12 @@ sudo python3 muse_integration/install.py --remove   # restores the original exec
 Then ask Muse: *"How is the Familiar doing?"* / *"Make the Familiar
 happy."* / *"Tell the Familiar there was an incident."*
 
+Trust boundary: `install.py` runs as root and verifies the patch by
+importing the repo's stdlib-only `familiar_specs.py` — i.e. it executes
+code from the repo checkout as root, once, exactly like `sudo pip install
+<local dir>` would. Only run it on a checkout you control; the running
+service itself imports it as the paired account at every start.
+
 Params are Muse-supplied and commands run via the SDK's own bash
 `system.run` — moods and event kinds are allowlisted before anything is
 executed (see `familiar_specs.py: register`).

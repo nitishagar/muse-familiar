@@ -62,3 +62,14 @@ in-place, resume unavailable). Start HEAD: 19e3234.
 ## Open
 - Board manual gates (installer run, muse install.py run, familiar
   status/feed live) deferred to user per plan.
+
+## Final position (2026-10-06)
+- Impl review: Round 3 PASS (fresh reviewer re-executed all oracles).
+- Test review: PASS (F1-F4 mutation-verified by reviewer).
+- Security review: PASS (0 Critical/High/Medium; Lows 1-7 hardened,
+  8 accepted — see SECURITY_REVIEW.md).
+- Security hardening commit applied AFTER reviews: feed via CLI (no key
+  in argv), timeout_ms passthrough, sys.path append, SHA-pinned actions,
+  whitespace path guard, LAN-cleartext note, trust-boundary doc —
+  re-proven against the verbatim real-SDK executor oracle + 50 passed.
+- Remaining: tag v0.1.0 + GitHub Release (this commit), then user gates.

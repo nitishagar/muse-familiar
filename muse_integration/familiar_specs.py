@@ -76,28 +76,30 @@ def register(namespace: dict, repo: str | None = None,
     """
     repo = repo or os.path.expanduser("~/muse-familiar")
     uv_bin = uv_bin or os.path.expanduser("~/.local/bin/uv")
-    key_file = os.path.expanduser("~/.config/familiar/key")
     _error = namespace["error"]
 
     def _status(executor, params):
         return executor.system_run(
-            {"command": _cli_cmd(repo, uv_bin, "ping")}, None)
+            {"command": _cli_cmd(repo, uv_bin, "ping"), "timeout_ms": 120000},
+            None)
 
     def _show(executor, params):
         mood = params.get("mood", "idle")
         if mood not in FAMILIAR_MOODS:
             return _error("bad mood")
         return executor.system_run(
-            {"command": _cli_cmd(repo, uv_bin, f"show {mood}")}, None)
+            {"command": _cli_cmd(repo, uv_bin, f"show {mood}"),
+             "timeout_ms": 120000}, None)
 
     def _feed(executor, params):
         kind = params.get("kind", "poke")
         if not _valid_kind(kind):
             return _error("bad kind")
-        return executor.system_run({"command":
-            f'curl -s -m 5 -X POST localhost:8123/poke '
-            f'-H "X-Familiar-Key: $(cat {key_file})" '
-            f'-d \'{{"kind": "{kind}"}}\''}, None)
+        # via the CLI (like status/show): the key stays out of argv, and
+        # the CLI re-validates the kind before its loopback POST.
+        return executor.system_run(
+            {"command": _cli_cmd(repo, uv_bin, f"feed {kind}"),
+             "timeout_ms": 120000}, None)
 
     handlers = {"familiar.status": _status, "familiar.show": _show,
                 "familiar.feed": _feed}
