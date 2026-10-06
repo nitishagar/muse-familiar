@@ -1,0 +1,44 @@
+name: ci
+
+# Full-history checkout: the secrets gate scans every blob in history and
+# the co-author check greps the whole log — both need fetch-depth 0.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: '0'
+
+      - uses: astral-sh/setup-uv@v5
+
+      # Same invocation the repo documents (README → Develop). The contract
+      # test (tests/test_contract.py) intentionally skips here: it compares
+      # muse_integration/familiar_specs.py against the REAL upstream SDK
+      # executor and needs a local checkout — run it with
+      #   MUSE_SDK_LINUX_DIR=/path/to/muse-gadget-sdk/linux \
+      #     uv run --with pytest --with msgpack python -m pytest -q
+      - name: Tests
+        run: uv run --with pytest --with msgpack python -m pytest -q
+
+      - name: Secrets gate
+        run: python3 tools/secrets_gate.py
+        # (SECRETS_GATE_EXTRA modes stay manual/local: an extra literal
+        # checked into this file would self-trip the tracked-file scan.)
+
+      - name: Landing regen parity
+        run: |
+          python3 tools/make_landing.py --check
+
+      - name: No co-author trailers
+        run: |
+          m=$(git log --all --grep="Co-Authored-By" --format=%H)
+          if [ -n "$m" ]; then echo "co-author trailers: $m"; exit 1; fi

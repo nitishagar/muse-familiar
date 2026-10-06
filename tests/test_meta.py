@@ -31,3 +31,21 @@ def test_no_router_socket_widening_in_executable_code():
          "familiar/", "firmware/upload.sh"],
         capture_output=True, text=True, cwd=REPO)
     assert out.stdout.strip() == ""
+
+
+def test_sketch_clamps_present():
+    # The MCU-side safety caps must stay in the sketch (spec inv 2): fps
+    # floor via MIN_PERIOD_MS, frame cap, idle timeout, 3-bit depth.
+    ino = (REPO / "firmware" / "FramePlayer" / "FramePlayer.ino").read_text()
+    for anchor in ("MIN_PERIOD_MS = 250", "MAX_FRAMES  = 64",
+                   "IDLE_TIMEOUT_MS = 30000", "setGrayscaleBits(3)"):
+        assert anchor in ino, f"sketch clamp anchor missing: {anchor!r}"
+
+
+def test_no_coauthor_trailers_in_log():
+    # Commit hygiene invariant: no attribution trailers anywhere in history
+    # (mirrors the CI step; needs a full clone to mean anything).
+    out = subprocess.run(
+        ["git", "log", "--all", "--grep=Co-Authored-By", "--format=%H"],
+        cwd=REPO, capture_output=True, text=True)
+    assert out.stdout.strip() == "", f"co-author trailers in history:\n{out.stdout}"

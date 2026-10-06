@@ -85,8 +85,23 @@ Familiar doing?"* — and mood changes appear in your chat:
 | `familiar/` | the engine: frame art, mood machine, webhook, bridge client, CLI |
 | `units/` | systemd user unit + NTP gate + display reset + kill-test |
 | `muse_integration/` | `familiar.*` command specs (contract-tested) + pairing runbook |
-| `tests/` | 19 host-side tests incl. a fake router socket |
+| `tests/` | host-side suite incl. a fake router socket (`tests/test_engine.py`) |
 | `thoughts/` | full research + plan + validation trail (the honest audit log) |
+
+## Develop
+
+```sh
+uv run --with pytest --with msgpack python -m pytest -q     # full suite
+uv run --with pytest --with msgpack python -m pytest tests/test_engine.py -q   # one file
+python3 tools/make_landing.py --check    # docs/ in sync with frames.py?
+python3 tools/secrets_gate.py            # no credential shapes anywhere
+```
+
+CI (`.github/workflows/ci.yml`) runs the suite, the secrets gate, landing
+parity, and a no-co-author check on every push. The Muse-spec contract
+test compares against the real upstream SDK and needs a local checkout:
+set `MUSE_SDK_LINUX_DIR=/path/to/muse-gadget-sdk/linux` before pytest to
+activate it.
 
 ## GIF / demo shot list
 

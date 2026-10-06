@@ -37,18 +37,21 @@ def load_moods() -> dict:
 # ------------------------------------------------------------- png writer ---
 
 
-def write_png(path: pathlib.Path, width: int, height: int, pixels: bytes) -> None:
+def png_bytes(width: int, height: int, pixels: bytes) -> bytes:
     def chunk(tag: bytes, data: bytes) -> bytes:
         return (struct.pack(">I", len(data)) + tag + data
                 + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF))
 
     raw = b"".join(b"\x00" + pixels[y * width * 3:(y + 1) * width * 3]
                    for y in range(height))
-    png = (b"\x89PNG\r\n\x1a\n"
-           + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
-           + chunk(b"IDAT", zlib.compress(raw, 9))
-           + chunk(b"IEND", b""))
-    path.write_bytes(png)
+    return (b"\x89PNG\r\n\x1a\n"
+            + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(raw, 9))
+            + chunk(b"IEND", b""))
+
+
+def write_png(path: pathlib.Path, width: int, height: int, pixels: bytes) -> None:
+    path.write_bytes(png_bytes(width, height, pixels))
 
 
 # 5x7 bitmap font (rows as 5-bit ints, MSB left) for the strings we need.
@@ -140,7 +143,7 @@ OG_MATRIX = {"origin_x": 64, "origin_y": 100, "pitch": 54, "led": 23,
              "glow": 10}
 
 
-def make_og_image(moods: dict, path: pathlib.Path) -> None:
+def og_png(moods: dict) -> bytes:
     W, H = OG_W, OG_H
     BG = (10, 14, 26)
     pixels = [c for _ in range(W * H) for c in BG]
@@ -177,7 +180,7 @@ def make_og_image(moods: dict, path: pathlib.Path) -> None:
         assert 0 <= y and y + h <= H, f"og text overflows vertically: {text!r}"
         draw_text(pixels, W, H, x, y, text, scale, rgb)
 
-    write_png(path, W, H, bytes(pixels))
+    return png_bytes(W, H, bytes(pixels))
 
 
 # ------------------------------------------------------------------ html ----
@@ -446,20 +449,49 @@ show('idle');
 """
 
 
-def make_site(moods: dict) -> None:
+def build(moods: dict | None = None) -> tuple[str, bytes]:
+    """The site as (html, og-png bytes) — deterministic; docs/ files are
+    exactly these bytes (tests/test_landing.py enforces the parity)."""
     import sys
     sys.path.insert(0, str(REPO))
     from familiar.frames import KIND_TO_MOOD
 
-    DOCS.mkdir(exist_ok=True)
+    if moods is None:
+        moods = load_moods()
     html = (HTML
             .replace("__MOODS_JSON__", json.dumps(moods))
             .replace("__KINDS_JSON__", json.dumps(KIND_TO_MOOD)))
+    return html, og_png(moods)
+
+
+def make_site(moods: dict | None = None) -> None:
+    DOCS.mkdir(exist_ok=True)
+    html, og = build(moods)
     (DOCS / "index.html").write_text(html)
-    make_og_image(moods, DOCS / "og-image.png")
+    (DOCS / "og-image.png").write_bytes(og)
     print(f"wrote {DOCS/'index.html'} ({len(html)//1024} KB) "
-          f"+ og-image.png ({(DOCS/'og-image.png').stat().st_size//1024} KB)")
+          f"+ og-image.png ({len(og)//1024} KB)")
+
+
+def check_site() -> int:
+    """Regenerate in memory and compare against the committed docs/."""
+    html, og = build()
+    ok = True
+    committed_html = (DOCS / "index.html").read_text()
+    committed_og = (DOCS / "og-image.png").read_bytes()
+    if html != committed_html:
+        print("DRIFT: docs/index.html differs from generated output "
+              "(run: python3 tools/make_landing.py)")
+        ok = False
+    if og != committed_og:
+        print("DRIFT: docs/og-image.png differs from generated output")
+        ok = False
+    if ok:
+        print("landing in sync with familiar/frames.py")
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":
+    if "--check" in sys.argv[1:]:
+        raise SystemExit(check_site())
     make_site(load_moods())

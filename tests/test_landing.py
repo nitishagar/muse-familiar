@@ -13,6 +13,16 @@ def _landing_html() -> str:
     return (REPO / "docs" / "index.html").read_text()
 
 
+def test_landing_matches_generator():
+    # docs/ must be byte-identical to what tools/make_landing.py produces —
+    # hand-edits would fork the creature art from frames.py.
+    html, og = make_landing.build()
+    assert html == (REPO / "docs" / "index.html").read_text(), \
+        "docs/index.html is out of sync (run: python3 tools/make_landing.py)"
+    assert og == (REPO / "docs" / "og-image.png").read_bytes(), \
+        "docs/og-image.png is out of sync"
+
+
 def test_hero_keeps_centered_margins():
     # .hero must not override .wrap's auto side-margins (page went left-aligned).
     m = re.search(r"\.hero\{([^}]*)\}", _landing_html())

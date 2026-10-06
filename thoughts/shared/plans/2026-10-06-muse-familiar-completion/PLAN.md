@@ -205,16 +205,19 @@ locally).
 "README documents no test command").
 
 ### Success Criteria
-- [ ] Local: `uv run --with pytest --with msgpack python -m pytest
+- [x] Local: `uv run --with pytest --with msgpack python -m pytest
   tests/test_landing.py::test_landing_matches_generator -q` → pass; and
-  mutating `docs/index.html` by one byte → same test FAILS · localizes
+  mutating `docs/index.html` by one byte → same test FAILS
+  ✓ 11 passed (landing+meta); ✓ FAILED test_landing_matches_generator - AssertionError (1 failed in 0.27s) on 1-byte drift, restored after · localizes
   to: generator↔artifact layer.
-- [ ] Local: `uv run --with pytest --with msgpack python -m pytest
-  tests/test_meta.py -q` → pass incl. clamp + co-author tests ·
+- [x] Local: `uv run --with pytest --with msgpack python -m pytest
+  tests/test_meta.py -q` → pass incl. clamp + co-author tests
+  ✓ 6 passed (test_meta.py) ·
   localizes to: repo-hygiene invariants.
-- [ ] End-to-end: `uv run --with pytest --with msgpack python -m pytest
+- [x] End-to-end: `uv run --with pytest --with msgpack python -m pytest
   -q` → ≥30 passed, ≤2 skipped (28 existing + new; skips = contract, and
   yaml only when pyyaml absent); gate clean.
+  ✓ 30 passed, 1 skipped in 4.17s · SECRETS GATE: clean · landing in sync
 - [ ] End-to-end: after push, `gh run watch` (or `gh api` latest run) →
   workflow `success` on first run.
 
