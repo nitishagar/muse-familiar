@@ -368,20 +368,30 @@ final commit (plain message, no trailer), `gh release create` with notes
 corrected (out-of-repo file, this session).
 
 ### Success Criteria
-- [ ] Local: `pytest tests/test_muse_install.py -q` → stub-executor
+- [x] Local: `pytest tests/test_muse_install.py -q` → stub-executor
   scenario: backup created; patched module **exec'd** (not just compiled)
   with the stub executor — `register()` ran, `familiar.status` present in
   COMMAND_SPECS, dispatch answers a familiar command; sentinel idempotent
   (re-run no-op); `--force` re-patch then `--remove` → original bytes
   restored (oldest-backup rule); temp cleaned · localizes to: patch logic
   (never the live venv).
-- [ ] Local: `MUSE_SDK_LINUX_DIR=$HOME/tmp-research/muse-gadget-sdk/linux
+  ✓ 4 passed (registration+allowlists+dispatch, idempotent, force+remove
+  round-trip, crash-before-replace leaves original)
+  [defects fixed during the phase: register() now takes globals() (fresh-file
+  loads), backup names collision-proofed (same-second force), --remove
+  deletes ALL backups]
+- [x] Local: `MUSE_SDK_LINUX_DIR=$HOME/tmp-research/muse-gadget-sdk/linux
   uv run --with pytest --with msgpack python -m pytest
   tests/test_contract.py -q` → PASS against the real SDK (inv 9
   unbroken by the import-based registration).
-- [ ] End-to-end: full suite green; gate clean; `gh repo view` shows
+  ✓ 1 passed in 0.02s
+- [x] End-to-end: full suite green; gate clean; `gh repo view` shows
   topics+homepage; `gh api repos/nitishagar/muse-familiar/releases`
   length 1; landing still HTTP 200.
+  ✓ 45 passed, 1 skipped · SECRETS GATE: clean · topics [ai arduino
+  desk-pet iot led-matrix muse muse-gadget qualcomm zephyr] · homepage
+  https://nitishagar.github.io/muse-familiar/ · [release: tagged AFTER
+  reviews pass — sequencing refinement, recorded in ledger]
 - [ ] Manual (board, user-visible): `sudo python3
   muse_integration/install.py` → service restarts, `musegadget info`
   unchanged, executor contains sentinel import; `--remove` round-trips.

@@ -32,6 +32,19 @@ in-place, resume unavailable). Start HEAD: 19e3234.
   Check: assertion rc==2 + code path review. CONFIRMED — fixed cli.py
   (exit 2 now driven by /health only; unit state is context + hint).
 
+## Hypotheses (phase 5)
+- muse_install tests red (KeyError executor_verify): H=hook relied on
+  sys.modules[__name__] which fresh-file loads don't populate. CONFIRMED —
+  register() now takes globals() (dict+class patching propagate).
+- force-then-remove left a backup: two same-second installs collided on
+  backup name (clobber) + --remove didn't delete baks[0]. CONFIRMED both —
+  backup names counter-suffixed; --remove deletes all backups.
+
+## Decisions (phase 5)
+- v0.1.0 tag + GitHub Release happen AFTER impl/test/security reviews pass
+  (release tags reviewed code); plan criterion partially ticked, release
+  step pending reviews.
+
 ## Open
 - Board manual gates (installer run, muse install.py run, familiar
   status/feed live) deferred to user per plan.
