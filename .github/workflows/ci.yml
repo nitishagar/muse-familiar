@@ -27,7 +27,7 @@ jobs:
       #   MUSE_SDK_LINUX_DIR=/path/to/muse-gadget-sdk/linux \
       #     uv run --with pytest --with msgpack python -m pytest -q
       - name: Tests
-        run: uv run --with pytest --with msgpack python -m pytest -q
+        run: uv run --with pytest --with msgpack --with pyyaml python -m pytest -q
 
       - name: Secrets gate
         run: python3 tools/secrets_gate.py

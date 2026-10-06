@@ -297,9 +297,11 @@ step becomes `uv run --with pytest --with msgpack --with pyyaml python
 skips cleanly).
 
 ### Success Criteria
-- [ ] Local: `uv run --with pytest --with msgpack --with pyyaml python
+- [x] Local: `uv run --with pytest --with msgpack --with pyyaml python
   -m pytest tests/test_meta.py::test_example_yaml_parses -q` → pass;
   without pyyaml → clean skip · localizes to: examples' syntactic layer.
+  ✓ 1 passed in 0.05s (with pyyaml) · ✓ 1 skipped in 0.01s (without)
+  [loader taught HA's !secret tag — safe_load rejects HA-idiomatic files]
 - [ ] End-to-end: full suite green; gate clean.
 - [ ] Manual: eyeball the workflow YAML against GitHub's schema (keys
   `on:/jobs:/steps:`, expression contexts).

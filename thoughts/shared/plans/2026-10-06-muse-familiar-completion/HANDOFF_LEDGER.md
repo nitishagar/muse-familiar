@@ -15,7 +15,11 @@ in-place, resume unavailable). Start HEAD: 19e3234.
   local_agent task") → author-verified-in-place PASS used per command rule.
 
 ## Hypotheses
-- (none yet)
+- Phase 3 YAML test fail: H=test loader too naive for HA's !secret tag
+  (safe_load ConstructorError at home-assistant.yaml:16). Check: the
+  failure text. CONFIRMED — test's loader taught the tag (artifact kept
+  HA-idiomatic). Note: test written same phase; not a weakened
+  pre-existing test.
 
 ## Confusion
 - Landing generator + tests were overhauled by out-of-session commits

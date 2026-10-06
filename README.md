@@ -58,6 +58,10 @@ Webhook kinds → moods: `ci_green`/`deploy_ok`/`merge` → **happy**;
 ignored. One-line test from another machine (LAN mode):
 `curl -X POST http://<board-ip>:8123/poke -H "X-Familiar-Key: …" -d '{"kind":"merge"}'`.
 
+Ready-made senders live in [`examples/`](examples/) — a GitHub Actions
+step (`github-action.yml`) and a Home Assistant `rest_command` +
+automations (`home-assistant.yaml`).
+
 ## Pairing with Muse
 
 The [Muse gadget SDK](https://github.com/facebookincubator/muse-gadget-sdk)
@@ -91,6 +95,7 @@ Familiar doing?"* — and mood changes appear in your chat:
 | Path | What |
 |---|---|
 | `firmware/FramePlayer/` | the Zephyr sketch (generic frame player, MCU-side clamps) |
+| `examples/` | ready-made feeders: GitHub Action + Home Assistant |
 | `familiar/` | the engine: frame art, mood machine, webhook, bridge client, CLI |
 | `units/` | systemd user unit + NTP gate + display reset + kill-test |
 | `muse_integration/` | `familiar.*` command specs (contract-tested) + pairing runbook |

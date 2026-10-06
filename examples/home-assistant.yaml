@@ -1,0 +1,42 @@
+# Feed the Familiar from Home Assistant.
+#
+# 1. Start the engine in LAN mode on the board (scripts/install.sh installs
+#    the unit; add a drop-in or edit the ExecStart to append --lan).
+# 2. configuration.yaml: add the rest_command below, replace the host with
+#    your board's IP, and put the key in secrets.yaml:
+#        familiar_key: "contents-of-~/.config/familiar/key"
+# 3. Reload, then call it from any automation (example below maps a door
+#    sensor to "alert" and the sun setting to "sleepy").
+
+rest_command:
+  familiar_poke:
+    url: "http://192.168.0.134:8123/poke"
+    method: POST
+    headers:
+      X-Familiar-Key: !secret familiar_key
+      Content-Type: application/json
+    payload: '{"kind": "{{ kind | default("poke") }}"'
+
+automation:
+  - alias: familiar front door opened while away
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.front_door
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: alarm_control_panel.home
+        state: armed_away
+    action:
+      - service: rest_command.familiar_poke
+        data:
+          kind: alert
+
+  - alias: familiar good night
+    trigger:
+      - platform: sun
+        event: sunset
+    action:
+      - service: rest_command.familiar_poke
+        data:
+          kind: hot   # the Familiar's "sleepy" trigger

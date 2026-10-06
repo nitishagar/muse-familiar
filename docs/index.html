@@ -127,7 +127,7 @@ footer{padding:32px 0 56px;color:#5b6980;font-size:13px;text-align:center}
 <div class="wrap">
   <div class="sec-head"><span class="sec-n">01</span><h2>How it works</h2></div>
   <div class="steps">
-    <div class="step"><span class="n">01</span><h3>Feed it</h3><p>GitHub, Home Assistant, or <code>curl</code> hit a tiny hardened webhook on the board's Linux side. Key'd, rate-limited, loopback by default.</p></div>
+    <div class="step"><span class="n">01</span><h3>Feed it</h3><p>GitHub, Home Assistant, or <code>curl</code> hit a tiny hardened webhook on the board's Linux side. Key'd, rate-limited, loopback by default — ready-made senders in <code>examples/</code>.</p></div>
     <div class="step"><span class="n">02</span><h3>Feel it</h3><p>A mood engine turns events into frame art and pushes animations over the board's msgpack-RPC bridge — 19&nbsp;ms round-trip, chunked around the router's 256-byte cap.</p></div>
     <div class="step"><span class="n">03</span><h3>Show it</h3><p>A Zephyr sketch on the STM32U585 renders frames — with fps, brightness and idle-timeout safety enforced in the MCU itself, so a crash can never leave it strobing.</p></div>
   </div>

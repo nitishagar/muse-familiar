@@ -3,6 +3,8 @@ import pathlib
 import subprocess
 import sys
 
+import pytest
+
 REPO = pathlib.Path(__file__).resolve().parent.parent
 
 
@@ -61,3 +63,19 @@ def test_docs_no_dangling_references():
         for banned in ("sdk-linux/", "after installing the unit"):
             assert banned not in text, f"{name} references {banned!r}"
     assert "$KEY" not in landing, "landing uses $KEY without defining it"
+
+
+def test_example_yaml_parses():
+    # examples/ must stay valid YAML with the keys a user copies them for
+    # (pyyaml is dev/CI-only; without it this skips cleanly). Home
+    # Assistant's !secret tag resolves to its name, as HA itself does.
+    yaml = pytest.importorskip("yaml")
+    loader = type("HALoader", (yaml.SafeLoader,), {})
+    loader.add_constructor("!secret", lambda l, node: l.construct_scalar(node))
+    action = yaml.safe_load((REPO / "examples" / "github-action.yml").read_text())
+    assert "runs" in action and action["runs"]["using"] == "composite"
+    assert action["runs"]["steps"][0]["continue-on-error"] is True
+    ha = yaml.load((REPO / "examples" / "home-assistant.yaml").read_text(),
+                   Loader=loader)
+    assert "rest_command" in ha and "familiar_poke" in ha["rest_command"]
+    assert isinstance(ha["automation"], list) and ha["automation"]
